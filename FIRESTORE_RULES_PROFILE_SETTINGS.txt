@@ -1,0 +1,24 @@
+// Merge these additional update-field permissions and validations into your
+// existing /visitors/{visitorId} allow update rule. Do not replace your
+// complete Firestore rules or remove owner/protected-field checks.
+//
+// Add to affectedKeys().hasOnly([...]):
+//   'heightCm', 'foodPreferences', 'parkInterests', 'faceRecognitionConsent'
+//
+// Add these AND conditions to allow update:
+// && (!request.resource.data.keys().hasAny(['heightCm'])
+//     || request.resource.data.heightCm == null
+//     || (request.resource.data.heightCm is int
+//         && request.resource.data.heightCm >= 50
+//         && request.resource.data.heightCm <= 250))
+// && (!request.resource.data.keys().hasAny(['foodPreferences'])
+//     || (request.resource.data.foodPreferences is list
+//         && request.resource.data.foodPreferences.size() <= 6))
+// && (!request.resource.data.keys().hasAny(['parkInterests'])
+//     || (request.resource.data.parkInterests is list
+//         && request.resource.data.parkInterests.size() <= 6))
+// && (!request.resource.data.keys().hasAny(['faceRecognitionConsent'])
+//     || request.resource.data.faceRecognitionConsent is bool)
+//
+// Also keep the previous phoneNumber-optional validation so older profiles
+// without phoneNumber can save.
