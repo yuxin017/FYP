@@ -1,0 +1,82 @@
+[
+  {
+    "id": "90:150",
+    "name": "Profile Setting",
+    "file": "docs/design/accounts/90-150.png",
+    "sourceHash": "2792089fbc826d07ad82d2e54367906de69cf148",
+    "width": 412,
+    "height": 954
+  },
+  {
+    "id": "90:157",
+    "name": "Personal Info Page",
+    "file": "docs/design/accounts/90-157.png",
+    "sourceHash": "a5db7cf8314fc3bfe6461c22a06a684302d9b864",
+    "width": 412,
+    "height": 954
+  },
+  {
+    "id": "90:158",
+    "name": "Peference Page",
+    "file": "docs/design/accounts/90-158.png",
+    "sourceHash": "cdb90bd2d3c2a4acc35835fae557a1a5cf9f08b1",
+    "width": 412,
+    "height": 954
+  },
+  {
+    "id": "90:159",
+    "name": "Face Recognition",
+    "file": "docs/design/accounts/90-159.png",
+    "sourceHash": "4416552db2da08eda11a815e557f2ad78a8e89d4",
+    "width": 412,
+    "height": 954
+  },
+  {
+    "id": "90:160",
+    "name": "Security & Account",
+    "file": "docs/design/accounts/90-160.png",
+    "sourceHash": "244f3748f8fb83a58f14ac564030e436924cfc4a",
+    "width": 851,
+    "height": 1848
+  },
+  {
+    "id": "92:186",
+    "name": "Delete Account",
+    "file": "docs/design/accounts/92-186.png",
+    "sourceHash": "a1e0bd147b9cfa70aeb7390a0b098080a6f41850",
+    "width": 851,
+    "height": 1848
+  },
+  {
+    "id": "21:166",
+    "name": "Forgot Password ",
+    "file": "docs/design/accounts/21-166.png",
+    "sourceHash": "9c9d73dd8a39876f610f13a3b45ac0d2c4de9db1",
+    "width": 1000,
+    "height": 2000
+  },
+  {
+    "id": "21:168",
+    "name": "Get OTP ( Reset Password ) ",
+    "file": "docs/design/accounts/21-168.png",
+    "sourceHash": "51767c123b21448be5fea6d1a2e670bc4fda0ba5",
+    "width": 1000,
+    "height": 2000
+  },
+  {
+    "id": "24:189",
+    "name": "Reset Password ",
+    "file": "docs/design/accounts/24-189.png",
+    "sourceHash": "ef577722c6e5acda5b52930ee5a2744baef6446f",
+    "width": 1000,
+    "height": 2000
+  },
+  {
+    "id": "25:194",
+    "name": "Register Page",
+    "file": "docs/design/accounts/25-194.png",
+    "sourceHash": "5f079f9ac3372cd8c117cc1bb66ba0747906d9f2",
+    "width": 1000,
+    "height": 2000
+  }
+]

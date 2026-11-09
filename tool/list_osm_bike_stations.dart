@@ -1,4 +1,5 @@
-// Standalone diagnostic script - NOT part of the app itself.
+// ignore_for_file: avoid_print
+// Standalone command-line diagnostic; results are written to stdout.
 //
 // Queries OpenStreetMap's free Overpass API directly for every
 // `amenity=bicycle_rental` node (i.e. every community-mapped bike-share /

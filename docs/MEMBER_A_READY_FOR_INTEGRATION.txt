@@ -1,0 +1,47 @@
+MEMBER A - READY FOR MEMBER B INTEGRATION
+7 November 2026
+
+ORIGINAL MEMBER A ALLOCATION
+Ready: configuration/navigation, verified accounts/profile/preferences, real
+Firebase ticket booking/history/QR, administrator visitor/package/order/ticket
+pages and admission validation, relevant rules/checks and implementation notes.
+Additional completed modules: points/vouchers and Help & Support with admin cases.
+Final account/profile/security completion is Module 5.
+
+The app runs at http://localhost:5173 using themeparksmartmanagement.
+Admin portal: http://localhost:5173/#/admin.
+Restart with .\tool\run-app.cmd; keep its terminal open.
+40 Flutter checks, 48 backend checks, scoped analysis and release build pass.
+Detailed test instructions: docs/MEMBER_A_MODULE_5.txt and the earlier module files.
+
+WHEN MEMBER B IS READY
+Send his updated source folder/ZIP here, including new Dart files/assets,
+backend functions, rules/index changes and any configuration instructions.
+Leave out build/, .dart_tool/, .git/, node_modules/, private keys and token caches.
+I will compare the changes, preserve both members' work and combine them here.
+There is no need to replace this whole project with his older copy.
+
+INTEGRATION POINTS TO CHECK
+1. Tickets: use current real orders/tickets. Order status completed; ticket
+   initial status valid; ownerUid/purchaserUid; visitDate/validUntil; orderId;
+   QR TP1:<ticket document ID>. A ticket used at the gate can still permit a
+   same-day reservation; use the agreed holder and date rules.
+2. Preferences: reuse visitors/{uid}.heightCm, foodPreferences and parkInterests.
+   Keep the optional nickname separate from the registered full name.
+3. Accounts: B's privileged functions must check the new accountSecurity closing
+   flag and revokedBefore cutoff. Confirm reservation ownerUid/status fields for
+   the active-reservation deletion guard. Preserve existing shared rules.
+4. Navigation/admin: combine Map/Queue/attraction/reservation pages and exports.
+   Connect Profile > Visited Attractions once B supplies its real visit data.
+
+STILL AWAITING B / JOINT VERIFICATION
+Attraction and slot management, reservation capacity/cancellation, map and
+recommendation integration, any required Functions deployment, and the complete
+ticket-to-reservation-to-entry journey with both members' final code.
+Billing remains unchanged. No GitHub push or merge was made.
+
+SCOPE CLARITY
+This means the original Member A allocation is ready, not every proposed/Figma
+feature. Native NFC, photo recognition/purchase/editing/kiosk, true Situm positioning,
+landmark recognition, KDE heatmaps and trained AI are not claimed as implemented
+by Member A's completed modules. The core-technology map identifies these separately.

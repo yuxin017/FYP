@@ -1,0 +1,76 @@
+RUN THIS PROJECT AFTER CLONING - WINDOWS 10/11 X64
+
+You need Git for Windows, an internet connection, a supported browser, and a
+Google account authorized to access the Firebase project themeparksmartmanagement.
+Android Studio and Java are not needed for the visitor/admin/kiosk web apps.
+
+1. Clone the combined project branch:
+
+   git clone --branch feat/a-foundation https://github.com/yuxin017/FYP.git
+   cd FYP
+   .\tool\run-app.cmd
+
+   The combined branch is feat/a-foundation. These commands clone that
+   branch. A normal clone of main will not contain its
+   changes until they are explicitly merged into main.
+
+2. The first launch prepares the exact project versions automatically:
+   Flutter 3.41.0 / Dart 3.11.0, Node 22.23.4, Python 3.12.14,
+   project-local Firebase CLI 15.35.0, locked packages and AI model files.
+   Missing toolchains are downloaded to:
+   %LOCALAPPDATA%\ThemeParkFYP\toolchains
+   Downloads are verified against tool/toolchains.json.
+   Initial setup downloads several GB and can take several minutes.
+   Following launches reuse the installed tools and dependencies.
+
+3. If this PC is not signed into Firebase CLI, complete the browser Google
+   sign-in opened by setup. That account must have access to the existing project.
+   The operator's CLI sign-in is separate from visitor/admin sign-in inside the app.
+   Passwords, CLI tokens and local provider secrets are not included in Git.
+
+4. Wait until Flutter reports that the application is being served, then open:
+   Visitor: http://localhost:5173/
+   Admin:   http://localhost:5173/#/admin
+   Kiosk:   http://localhost:5173/#/kiosk
+   Keep the original launcher terminal open.
+
+ALREADY RUNNING / RESTARTING
+Running .\tool\run-app.cmd again verifies and reuses the existing app.
+After pulling source updates, rebuild with:
+   .\tool\run-app.cmd -Restart
+To stop both this project's web server and local API:
+   .\tool\stop-app.cmd
+To prepare dependencies without launching the browser app:
+   .\tool\setup.cmd
+To change/renew the operator's Firebase CLI sign-in:
+   .\tool\firebase-login.cmd
+If another folder's API is running, stop it from that folder before switching.
+
+FILES TO COMMIT BEFORE PUSHING
+Include all application source, assets, rules, tests, tool scripts, and:
+   pubspec.yaml / pubspec.lock
+   functions/package.json / functions/package-lock.json
+   tool/firebase/package.json / tool/firebase/package-lock.json
+   tool/toolchains.json / ai/requirements.txt / ai/model_manifest.json
+Do not copy .local, node_modules, build, .dart_tool, env.json or private secrets.
+The repository's .gitignore excludes those machine-specific files.
+There is no need to install Codex or reproduce the author's directory layout.
+Keep the lockfiles; do not run pub upgrade to resolve startup messages.
+
+OPTIONAL CONNECTIONS / ANDROID
+Mapbox, Situm, email/SMS, actual park location and physical hardware still require
+the configuration described in SETUP_CONNECTIONS.txt. Their missing credentials
+do not prevent the main web application from starting.
+For an Android phone, install Android Studio/SDK Platform Tools and complete the
+Android SDK licences, enable USB debugging and run tool\run-android.cmd.
+The script prepares Java 21 and USB forwarding. An iOS build requires a Mac.
+
+GITHUB BRANCH
+Repository: https://github.com/yuxin017/FYP
+Combined source branch: feat/a-foundation
+Use the --branch command above to obtain this version. Main is unchanged.
+If you already cloned this repository:
+   git fetch origin
+   git switch feat/a-foundation
+   git pull --ff-only
+   .\tool\run-app.cmd -Restart

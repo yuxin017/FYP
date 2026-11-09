@@ -4,6 +4,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'profile_settings_page.dart';
+import '../visitor_main_page.dart';
+import '../services/ticket_repository.dart';
+import '../models/rewards.dart';
+import '../services/rewards_repository.dart';
+import 'rewards_page.dart';
+import '../../support/support_page.dart';
+import '../../visits/visit_repository.dart';
+import '../../visits/visit_pages.dart';
+import 'purchase_history_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -18,9 +27,7 @@ class ProfilePage extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      return const Center(
-        child: Text('Please log in to view your profile.'),
-      );
+      return const Center(child: Text('Please log in to view your profile.'));
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -30,25 +37,19 @@ class ProfilePage extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const Center(
-            child: Text('Unable to load your profile.'),
-          );
+          return const Center(child: Text('Unable to load your profile.'));
         }
 
         if (!snapshot.hasData) {
           return const Center(
-            child: CircularProgressIndicator(
-              color: _primary,
-            ),
+            child: CircularProgressIndicator(color: _primary),
           );
         }
 
         final data = snapshot.data!.data();
 
         if (data == null) {
-          return const Center(
-            child: Text('Visitor profile not found.'),
-          );
+          return const Center(child: Text('Visitor profile not found.'));
         }
 
         final name = data['fullName'] as String? ?? 'Visitor';
@@ -64,11 +65,7 @@ class ProfilePage extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     stops: [0.0, 0.38, 1.0],
-                    colors: [
-                      _background,
-                      Color(0xFFFEF8F5),
-                      Color(0xFFFFFCFA),
-                    ],
+                    colors: [_background, Color(0xFFFEF8F5), Color(0xFFFFFCFA)],
                   ),
                 ),
               ),
@@ -86,7 +83,8 @@ class ProfilePage extends StatelessWidget {
                       'assets/images/Background.png',
                       fit: BoxFit.cover,
                       alignment: Alignment.topCenter,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox.shrink(),
                     ),
                     const DecoratedBox(
                       decoration: BoxDecoration(
@@ -115,9 +113,9 @@ class ProfilePage extends StatelessWidget {
                   const SizedBox(height: 20),
                   _userCard(context, name, email, data),
                   const SizedBox(height: 16),
-                  _statistics(points),
+                  _statistics(context, points),
                   const SizedBox(height: 14),
-                  _scanButton(),
+                  _scanButton(context),
                   const SizedBox(height: 28),
                   const Padding(
                     padding: EdgeInsets.only(left: 4, bottom: 10),
@@ -141,8 +139,14 @@ class ProfilePage extends StatelessWidget {
   }
 
   void _openSettings(BuildContext context) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ProfileSettingsPage()));
+  }
+
+  void _openRewards(BuildContext context, String section) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProfileSettingsPage()),
+      MaterialPageRoute(builder: (_) => RewardsPage(initialSection: section)),
     );
   }
 
@@ -161,9 +165,14 @@ class ProfilePage extends StatelessWidget {
     return Row(
       children: [
         const Expanded(
-          child: Text('Profile', style: TextStyle(
-            fontSize: 24, fontWeight: FontWeight.w700, color: _dark,
-          )),
+          child: Text(
+            'Profile',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: _dark,
+            ),
+          ),
         ),
         IconButton(
           tooltip: 'Language',
@@ -191,10 +200,12 @@ class ProfilePage extends StatelessWidget {
             builder: (dialogContext) => AlertDialog(
               title: const Text('Notifications'),
               content: const Text('No notifications yet.'),
-              actions: [TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Close'),
-              )],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Close'),
+                ),
+              ],
             ),
           ),
           icon: const Icon(Icons.notifications_none, color: _primary),
@@ -206,7 +217,8 @@ class ProfilePage extends StatelessWidget {
   // Membership levels: Normal, Silver, Gold.
   // New accounts default to Normal; membershipLevel can be set by a trusted backend.
   String _membershipLabel(Map<String, dynamic> data) {
-    final level = (data['membershipLevel'] as String? ?? 'normal').toLowerCase();
+    final level = (data['membershipLevel'] as String? ?? 'normal')
+        .toLowerCase();
     switch (level) {
       case 'gold':
         return 'Gold Member';
@@ -217,14 +229,16 @@ class ProfilePage extends StatelessWidget {
     }
   }
 
-  Widget _userCard(BuildContext context, String name, String email, Map<String, dynamic> data) {
+  Widget _userCard(
+    BuildContext context,
+    String name,
+    String email,
+    Map<String, dynamic> data,
+  ) {
     final photo = _profileImage(data);
     final membershipLabel = _membershipLabel(data);
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 15,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -260,10 +274,7 @@ class ProfilePage extends StatelessWidget {
                   email,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
                 const SizedBox(height: 7),
                 Container(
@@ -276,12 +287,17 @@ class ProfilePage extends StatelessWidget {
                     border: Border.all(color: _primary),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    membershipLabel,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: _primary,
+                  child: StreamBuilder<List<LoyaltyEvent>>(
+                    stream: FirebaseRewardsRepository().events(),
+                    builder: (context, snapshot) => Text(
+                      snapshot.hasData
+                          ? '${RewardsTier.forEarned(snapshot.data!.where((e) => e.delta > 0).fold<int>(0, (total, e) => total + e.delta)).name} Member'
+                          : membershipLabel,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                      ),
                     ),
                   ),
                 ),
@@ -293,27 +309,21 @@ class ProfilePage extends StatelessWidget {
             onPressed: () => _openSettings(context),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(0, 32),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 9,
-                vertical: 0,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 0),
               side: const BorderSide(color: _primary),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
               disabledForegroundColor: _primary,
             ),
-            child: const Text(
-              'Edit Profile',
-              style: TextStyle(fontSize: 10),
-            ),
+            child: const Text('Edit Profile', style: TextStyle(fontSize: 10)),
           ),
         ],
       ),
     );
   }
 
-  Widget _statistics(int points) {
+  Widget _statistics(BuildContext context, int points) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
@@ -323,22 +333,47 @@ class ProfilePage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _statItem(
-            Icons.confirmation_number,
-            '0',
-            'My Tickets',
+          Expanded(
+            child: StreamBuilder(
+              stream: FirebaseTicketRepository().tickets(),
+              builder: (context, snapshot) => InkWell(
+                onTap: () => VisitorMainPage.openTickets(context, 'tickets'),
+                child: Row(
+                  children: [
+                    _statItem(
+                      Icons.confirmation_number,
+                      '${snapshot.data?.where((t) => t.filter == 'Upcoming').length ?? 0}',
+                      'My Tickets',
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
           _statDivider(),
           _statItem(
             Icons.stars,
-            '$points',
+            groupedPoints(points),
             'Points',
+            onTap: () => _openRewards(context, 'points'),
           ),
           _statDivider(),
-          _statItem(
-            Icons.local_offer,
-            '0',
-            'Vouchers',
+          Expanded(
+            child: StreamBuilder<List<RewardVoucher>>(
+              stream: FirebaseRewardsRepository().vouchers(),
+              builder: (context, snapshot) => Row(
+                children: [
+                  _statItem(
+                    Icons.local_offer,
+                    snapshot.hasError
+                        ? '—'
+                        : '${snapshot.data?.where((v) => v.state == 'Available').length ?? 0}',
+                    'Vouchers',
+                    onTap: () => _openRewards(context, 'vouchers'),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -346,57 +381,51 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _statDivider() {
-    return Container(
-      width: 1,
-      height: 64,
-      color: _border,
-    );
+    return Container(width: 1, height: 64, color: _border);
   }
 
   Widget _statItem(
-      IconData icon,
-      String value,
-      String label,
-      ) {
+    IconData icon,
+    String value,
+    String label, {
+    VoidCallback? onTap,
+  }) {
     return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: _primary, size: 25),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w700,
-              color: _primary,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _primary, size: 25),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                color: _primary,
+              ),
             ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 10,
-              color: Colors.grey,
+            const SizedBox(height: 1),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _scanButton() {
+  Widget _scanButton(BuildContext context) {
     return SizedBox(
       height: 46,
       child: ElevatedButton.icon(
-        onPressed: null,
+        onPressed: () => VisitorMainPage.openTickets(context, 'scan'),
         icon: const Icon(Icons.qr_code, size: 25),
         label: const Text(
           'Scan & Add Ticket',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: _primary,
@@ -425,25 +454,31 @@ class ProfilePage extends StatelessWidget {
             Icons.shopping_bag_outlined,
             'Purchase History',
             'Tickets, photos and purchases',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CombinedPurchaseHistoryPage(),
+              ),
+            ),
           ),
           _divider(),
           _menuItem(
             Icons.bar_chart,
             'Visited Attractions',
             'Current and past visits',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    VisitHistoryPage(repository: FirebaseVisitRepository()),
+              ),
+            ),
           ),
           _divider(),
           ListTile(
-            leading: const Icon(
-              Icons.person_outline,
-              color: Color(0xFFAD7472),
-            ),
+            leading: const Icon(Icons.person_outline, color: Color(0xFFAD7472)),
             title: const Text(
               'Profile Settings',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
             subtitle: const Text(
               'Personal details, preferences and security',
@@ -459,6 +494,9 @@ class ProfilePage extends StatelessWidget {
             Icons.help_outline,
             'Help & Support',
             'Guides, feedback and complaints',
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const SupportPage())),
           ),
         ],
       ),
@@ -466,31 +504,21 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _divider() {
-    return const Divider(
-      height: 1,
-      indent: 14,
-      endIndent: 14,
-      color: _border,
-    );
+    return const Divider(height: 1, indent: 14, endIndent: 14, color: _border);
   }
 
   Widget _menuItem(
-      IconData icon,
-      String title,
-      String subtitle,
-      ) {
+    IconData icon,
+    String title,
+    String subtitle, {
+    VoidCallback? onTap,
+  }) {
     return SizedBox(
       height: 62,
       child: ListTile(
         dense: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-        ),
-        leading: Icon(
-          icon,
-          color: _primary,
-          size: 26,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+        leading: Icon(icon, color: _primary, size: 26),
         title: Text(
           title,
           style: const TextStyle(
@@ -503,16 +531,10 @@ class ProfilePage extends StatelessWidget {
           subtitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 9,
-            color: Colors.grey,
-          ),
+          style: const TextStyle(fontSize: 9, color: Colors.grey),
         ),
-        trailing: const Icon(
-          Icons.chevron_right,
-          size: 18,
-        ),
-        onTap: null,
+        trailing: const Icon(Icons.chevron_right, size: 18),
+        onTap: onTap,
       ),
     );
   }

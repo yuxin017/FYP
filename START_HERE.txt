@@ -1,0 +1,86 @@
+THEME PARK - COMBINED PROJECT
+
+Final project folder:
+C:\Users\seowy\Documents\Codex\FYP
+On another PC, use that PC's clone folder; this exact path is not required.
+
+Member B's incoming folder is preserved separately. Use this primary folder
+for all further work. Do not copy the incoming folder back over this project.
+
+OPEN THE APPLICATION
+1. Open PowerShell in the final project folder.
+2. Run: .\tool\run-app.cmd
+3. Keep that terminal open.
+4. Visitor application: http://localhost:5173/
+5. Admin portal: http://localhost:5173/#/admin
+6. Photo kiosk: http://localhost:5173/#/kiosk
+
+If the app is already running, the launcher verifies and reuses that copy,
+checks the application API, and prints the addresses without starting a second
+web server. Keep the original launcher terminal open. To rebuild after source
+changes, use .\tool\run-app.cmd -Restart.
+To stop this folder's web server and API, run .\tool\stop-app.cmd.
+Messages about newer package versions are informational; keep the locked versions.
+First launch now prepares missing tools, locked packages, AI models and Firebase
+access automatically. Another PC follows RUN_ON_ANOTHER_PC.txt. It does not need
+Codex or this computer's folder layout. Complete its own Google sign-in if asked.
+
+Use your existing themeparksmartmanagement accounts. The admin portal and kiosk
+require a verified account with the Firebase Auth admin custom claim. A profile
+document can still say role=visitor; that field does not grant admin access.
+Passwords were not changed or placed in this document.
+
+The launcher connects to the real Firebase project and starts the authenticated
+application API on port 8787. Keep the computer and launcher running while
+using its API features. No bank/card charge is made by ticket/photo confirmation.
+Orders, tickets, entitlements and point movements are saved in Firebase.
+
+WHERE TO FIND THE COMBINED FEATURES
+- Home: Tickets, Virtual Queue, My Groups, My Park Photos, Park Offers, Assistant.
+- Profile: combined Purchase History, Visited Attractions, Points & Vouchers,
+  personal details, preferences, security, linked phone and photo matching.
+- Map: park search, landmark camera, directions, assistant and configured venue
+  navigation. Group live location is opt-in and stops when you leave its screen.
+- Admin: visitors, orders, packages, photos, promotions/rewards, reports,
+  landmarks, crowd monitoring, unusual activity, facilities, reservations,
+  admissions and support.
+- Kiosk: collect a paid print order, or start a separate visitor shopping session.
+
+TRY THESE FLOWS YOURSELF
+1. Sign in with your existing visitor account. Check name, balance and profile.
+2. Buy a pass for a valid visit day; add each guest, review points and confirm.
+   Reopen My Tickets and Purchase History; open the QR/NFC pass and receipt.
+3. Reserve an open attraction with a valid ticket and eligible height. Check the
+   return window, reminder, cancellation and entrance pass.
+4. Create a group, add/join members, link separate tickets and reserve together.
+   Test a guest pass as well as a registered member. Share/stop live location.
+5. In admin Attraction Check-in, scan/enter the reservation during its window.
+   Check points once, then reopen the completed visit and submit a rating.
+6. Optional photo matching: enrol your own clear selfie with consent. In admin
+   Smart Photos, upload an actual park photo with capture time/place. You can
+   also use the photographer's photo code without enrolling a face profile.
+7. Preview/edit a matched photo; try crop, rotation, filters, brightness, beauty
+   and stickers. Choose digital/print/bundle, then confirm the purchase.
+8. Reopen the photo order, download a digital copy/receipt, and open its kiosk
+   collection pass. Test print preview and cancellation. Confirm a printer job
+   only when sent; mark collected only after the physical copies are handed over.
+9. In the kiosk, try Browse & Purchase Photos with a visitor account. End the
+   session and confirm the next visitor cannot see the previous visitor's cart.
+10. Create a promotion/reward in admin. Check its visibility, dates, redemption
+    limit and points-combination rule. Test a ticket/photo promotion code.
+11. Generate a report for a date range, check totals/top products and export PDF.
+    Review voucher issuance/use and redemption rates. In Crowd Monitoring, try
+    the period filters, heatmap selection, demand search and Manage Facilities.
+12. Ask the assistant questions in English, Malay and Chinese. Try its feature
+    links, voice input and read-aloud button where your browser/device supports it.
+13. Check device sessions, password recovery, linked phone and device unlock.
+    Do not delete your account merely to review the application.
+
+SETUP STILL REQUIRING YOUR ACCOUNTS / CHOICES / HARDWARE
+See SETUP_CONNECTIONS.txt for Mapbox/Situm, SMTP, SMS provider, actual park
+coordinates, Android USB access, NFC readers and printers. These do not use
+invented credentials, locations, face identities, weather or print outcomes.
+
+No GitHub push/merge or Firebase billing-plan change was performed.
+Detailed feature-to-technology mapping: docs\FEATURE_TECHNOLOGIES.txt.
+Verification evidence and current state: docs\IMPLEMENTATION_PROGRESS.md.

@@ -10,6 +10,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_storage
   flutter_tts
   geolocator_windows
+  local_auth_windows
   printing
   url_launcher_windows
 )

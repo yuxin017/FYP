@@ -1,0 +1,77 @@
+CORE TECHNOLOGIES AND MODULES
+Checked against FYP Title.pdf and the current Member A implementation.
+Updated 7 November 2026.
+
+Flutter / Dart
+All visitor modules and the administrator web portal. Chrome/web has been
+verified here; native mobile builds still require their own device checks.
+
+Firebase Authentication and Cloud Firestore
+Shared foundation across modules. Member A Modules 1-5 already use the existing
+themeparksmartmanagement project: accounts, ticket orders/issuance/admission,
+loyalty/vouchers and help/support cases. These modules use Firestore transactions
+and rules and do not depend on deploying new Cloud Functions.
+
+QR codes
+Module 1: real ticket QR issuance, wallet and ticket lookup/scanning.
+Module 2: administrator admission validation and duplicate-entry prevention.
+Module 3: reward voucher QR and recorded single use.
+Later photo/kiosk work can connect QR-based photo retrieval.
+
+Situm SDK / Wi-Fi positioning
+Smart Navigation & Map, in Member B's navigation area. The proposal places it
+here. Its actual live SDK integration has not been verified in this workspace.
+
+Camera-based landmark recognition
+Smart Navigation & Map, to identify landmarks and help visitors locate themselves.
+This is separate from face matching. Actual integration is not verified here.
+
+Mapbox and Kernel Density Estimation (KDE)
+Crowd Monitoring / Analytics and the navigation/crowd map. Queue/attraction data
+can supply inputs. The actual Mapbox/KDE pipeline is not verified here.
+
+Python AI recommendations
+Recommendation / Virtual Queue work in Member B's area: personalise attraction
+suggestions using visitor preferences and crowd/wait information. A recommendation
+screen alone does not verify that the Python AI service is connected.
+
+OpenCV face matching
+Smart Photo Recognition / Photo Management and photo retrieval/kiosk flow.
+The existing profile consent setting is not a completed face-matching pipeline.
+Actual photo recognition remains later work in this workspace.
+
+NFC
+Ticket/attraction access and photo-kiosk interactions described by the proposal.
+Native NFC is not implemented in the current Member A modules; the implemented
+ticket access method is QR. Do not label the QR fallback as working NFC.
+
+Firebase Cloud Functions
+Backend execution where a module chooses a server-side function, for example
+Member B's reservation handlers. This is separate from Firebase Authentication
+and Firestore. Deploying Functions needs Blaze; billing remains unchanged.
+Member B's function code/deployment and reservation integration are not verified here.
+
+MODULE 4
+Help, guides, FAQs and support conversations use Flutter, Firebase Auth and
+Firestore. They do not implement AI recommendations or computer vision.
+
+MODULE 5
+Account/profile/security completion uses Flutter, Firebase Auth and Firestore.
+An authenticated Node service handles device revocation and account cleanup;
+it runs alongside the web app and does not need new Cloud Functions deployment.
+
+MEMBER B INTEGRATION NOTE
+Member A's current Module 1 issues real shared-Firebase records atomically:
+  orders/{requestId}: status = completed
+  tickets/{ticketId}: status = valid
+  ownership: ownerUid, purchaserUid, guestEmail
+  dates: visitDate and validUntil (YYYY-MM-DD, Malaysia park date)
+  linkage: orderId
+  QR payload: TP1:<ticket document ID>
+Check these fields, eligibility dates and intended holder rules when integrating
+reservations. Current local B screens have not been replaced by Member B's newer
+work yet. An older separate copy may still contain local ticket placeholders.
+
+Source: C:\Users\seowy\Downloads\FYP Title.pdf (technology proposal).
+Cloud Functions deployment reference:
+https://firebase.google.com/docs/functions/get-started

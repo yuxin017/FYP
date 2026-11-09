@@ -1,23 +1,227 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/visitor_ui.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
-class QueuePage extends StatefulWidget { const QueuePage({super.key}); @override State<QueuePage> createState() => _QueuePageState(); }
+import '../../attractions/data/attraction_repository.dart';
+import '../../attractions/models/attraction.dart';
+import '../../attractions/models/attraction_slot.dart';
+import '../../attractions/models/queue_policy.dart';
+import '../../attractions/pages/attractions_page.dart';
+import '../../attractions/widgets/attraction_widgets.dart';
+import '../../park/crowd_heatmap_page.dart';
+import '../../park/smart_itinerary_page.dart';
+import '../../park/intelligence_repository.dart';
+import '../../groups/group_pages.dart';
+import '../../groups/group_repository.dart';
+import '../widgets/visitor_ui.dart';
+import '../visitor_main_page.dart';
+import '../../reservations/data/reservation_repository.dart';
+import '../../reservations/pages/reserve_attraction_page.dart';
+import '../../reservations/reminders/reservation_reminders.dart';
+
+/// Customer attraction browsing and individual ride reservations.
+class QueuePage extends StatefulWidget {
+  const QueuePage({super.key, this.startPlace});
+
+  final ValueNotifier<String?>? startPlace;
+
+  @override
+  State<QueuePage> createState() => _QueuePageState();
+}
+
 class _QueuePageState extends State<QueuePage> {
-  String? selected;
-  static const rides = [('Sky Coaster', 'Thrill', 35), ('Magic Carousel', 'Family', 10), ('River Adventure', 'Water', 25), ('Castle Express', 'Family', 15)];
-  @override void initState() { super.initState(); _load(); }
-  Future<void> _load() async { final prefs = await SharedPreferences.getInstance(); if (mounted) setState(() => selected = prefs.getString('demo_queue_ride')); }
-  Future<void> _setRide(String? name) async { final prefs = await SharedPreferences.getInstance(); if (name == null) { await prefs.remove('demo_queue_ride'); } else { await prefs.setString('demo_queue_ride', name); } if (mounted) setState(() => selected = name); }
-  @override Widget build(BuildContext context) => VisitorScreen(title: 'Virtual Queue', children: [
-    const VisitorNotice('Estimated waits below are illustrative, not live. Demo queue selections are saved locally and do not reserve real attraction capacity.'),
-    const SizedBox(height: 20),
-    if (selected != null) Card(color: const Color(0xFFFFECE8), child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('My Demo Queue', style: TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 8), Text(selected!, style: const TextStyle(fontSize: 20)), const SizedBox(height: 10), VisitorButton(label: 'Leave Demo Queue', onPressed: () => _setRide(null))]))),
-    const SizedBox(height: 12), const Text('Attractions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
-    ...rides.map((ride) => Card(color: Colors.white, margin: const EdgeInsets.only(bottom: 12), child: Padding(padding: const EdgeInsets.all(15), child: Row(children: [
-      CircleAvatar(backgroundColor: const Color(0xFFFFECE8), child: Icon(ride.$2 == 'Water' ? Icons.water_drop_outlined : Icons.attractions, color: visitorRose)), const SizedBox(width: 12),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(ride.$1, style: const TextStyle(fontWeight: FontWeight.w700)), Text('${ride.$2} · Sample wait ${ride.$3} min', style: const TextStyle(fontSize: 12, color: Colors.black54))])),
-      TextButton(onPressed: selected == null ? () => _setRide(ride.$1) : null, child: Text(selected == ride.$1 ? 'Joined' : 'Join')),
-    ])))),
-  ]);
+  late final FirebaseAuth _auth;
+  late final FirebaseFirestore _firestore;
+  late final AttractionRepository _store;
+  late Stream<User?> _users;
+
+  @override
+  void initState() {
+    super.initState();
+    _auth = FirebaseAuth.instance;
+    _firestore = FirebaseFirestore.instance;
+    _store = AttractionRepository(firestore: _firestore);
+    _users = _auth.authStateChanges();
+  }
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<User?>(
+    stream: _users,
+    initialData: _auth.currentUser,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return VisitorScreen(
+          title: 'Attractions',
+          children: [
+            AttractionMessage(
+              icon: Icons.lock_outline,
+              title: 'Could not check your session',
+              message: 'Please try again or sign in again.',
+              action: 'Try again',
+              onAction: () => setState(() => _users = _auth.authStateChanges()),
+            ),
+          ],
+        );
+      }
+      if (snapshot.connectionState == ConnectionState.waiting &&
+          snapshot.data == null) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final user = snapshot.data;
+      if (user == null) {
+        return const VisitorScreen(
+          title: 'Attractions',
+          children: [
+            AttractionMessage(
+              icon: Icons.login,
+              title: 'Please sign in',
+              message: 'Sign in to view the park attractions.',
+            ),
+          ],
+        );
+      }
+      return _SignedInAttractions(
+        key: ValueKey(user.uid),
+        uid: user.uid,
+        firestore: _firestore,
+        store: _store,
+        startPlace: widget.startPlace,
+      );
+    },
+  );
+}
+
+class _SignedInAttractions extends StatefulWidget {
+  const _SignedInAttractions({
+    super.key,
+    required this.uid,
+    required this.firestore,
+    required this.store,
+    this.startPlace,
+  });
+  final String uid;
+  final FirebaseFirestore firestore;
+  final AttractionRepository store;
+  final ValueNotifier<String?>? startPlace;
+
+  @override
+  State<_SignedInAttractions> createState() => _SignedInAttractionsState();
+}
+
+class _SignedInAttractionsState extends State<_SignedInAttractions> {
+  late final Stream<DocumentSnapshot<Map<String, dynamic>>> _profile;
+  late final ReservationRepository _reservations;
+
+  @override
+  void initState() {
+    super.initState();
+    _reservations = ReservationRepository(
+      uid: widget.uid,
+      firestore: widget.firestore,
+      functions: FirebaseFunctions.instanceFor(region: 'us-central1'),
+      email: FirebaseAuth.instance.currentUser?.email,
+    );
+    _profile = widget.firestore
+        .collection('visitors')
+        .doc(widget.uid)
+        .snapshots();
+  }
+
+  void _openPlace(Attraction place, AttractionSlot? slot) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReserveAttractionPage(
+          attraction: place,
+          attractions: widget.store,
+          slots: widget.store,
+          reservations: _reservations,
+          day: QueuePolicy.parkDay(slot?.startsAt ?? DateTime.now()),
+          initialSlotId: slot?.id,
+        ),
+      ),
+    );
+  }
+
+  void _selectTab(int index) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    VisitorMainPage.goTo(context, index);
+  }
+
+  void _openHeatmap(int? height, List<String> interests) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CrowdHeatmapPage(
+          intelligence: FirebaseParkIntelligenceRepository(),
+          attractions: widget.store,
+          slots: widget.store,
+          onPlace: _openPlace,
+          onTab: _selectTab,
+          heightCm: height,
+          interests: interests,
+          originId: widget.startPlace?.value,
+        ),
+      ),
+    );
+  }
+
+  void _openItinerary() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SmartItineraryPage(
+          intelligence: FirebaseParkIntelligenceRepository(),
+          attractions: widget.store,
+          slots: widget.store,
+          reservations: _reservations,
+          watchProfile: () => widget.firestore
+              .collection('visitors')
+              .doc(widget.uid)
+              .snapshots()
+              .map((snapshot) => snapshot.data()),
+          onPlace: _openPlace,
+          onTab: _selectTab,
+          originId: widget.startPlace?.value,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) => StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+    stream: _profile,
+    builder: (context, snapshot) {
+      final rawHeight = snapshot.data?.data()?['heightCm'];
+      final height = rawHeight is int && rawHeight >= 50 && rawHeight <= 250
+          ? rawHeight
+          : null;
+      final interests =
+          (snapshot.data?.data()?['parkInterests'] as List?)
+              ?.whereType<String>()
+              .toList() ??
+          const <String>[];
+      return ReservationReminders(
+        store: _reservations,
+        child: AttractionsPage(
+          store: widget.store,
+          slotReader: widget.store,
+          reservations: _reservations,
+          visitorHeightCm: height,
+          parkInterests: interests,
+          onHeatmap: () => _openHeatmap(height, interests),
+          onPlan: _openItinerary,
+          onGroups: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => GroupsPage(repository: FirebaseGroupRepository()),
+            ),
+          ),
+          notice: snapshot.hasError
+              ? 'Your saved height could not be loaded. Attraction height requirements are still shown.'
+              : null,
+        ),
+      );
+    },
+  );
 }

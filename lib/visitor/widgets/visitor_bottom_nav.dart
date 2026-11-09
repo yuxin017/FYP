@@ -97,7 +97,7 @@ class VisitorBottomNav extends StatelessWidget {
                                 width: 26,
                                 height: 26,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) =>
+                                errorBuilder: (_, _, _) =>
                                 const Icon(
                                   Icons.broken_image_outlined,
                                 ),

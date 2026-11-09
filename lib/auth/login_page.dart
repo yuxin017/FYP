@@ -1,10 +1,12 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../visitor_home_page.dart';
+import 'package:flutter/foundation.dart';
 import 'register_page.dart';
 import 'auth_gate.dart';
+import 'login_error_message.dart';
+import '../support/support_page.dart';
 import '../visitor/pages/forgot_password_page.dart';
+import 'phone_auth_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -36,17 +38,22 @@ class _LoginPageState extends State<LoginPage> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading || !_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      if (kIsWeb) {
+        await FirebaseAuth.instance.setPersistence(
+          _rememberMe ? Persistence.LOCAL : Persistence.SESSION,
+        );
+      }
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -58,66 +65,18 @@ class _LoginPageState extends State<LoginPage> {
       // If LoginPage was opened directly, replace it with
       // AuthGate so the signed-in page is displayed.
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const AuthGate(),
-        ),
-            (route) => false,
+        MaterialPageRoute(builder: (_) => const AuthGate()),
+        (route) => false,
       );
     } on FirebaseAuthException catch (e) {
-      String message;
-
-      switch (e.code) {
-        case 'invalid-credential':
-        case 'wrong-password':
-        case 'user-not-found':
-          message = 'Incorrect email or password.';
-          break;
-        case 'invalid-email':
-          message = 'Please enter a valid email address.';
-          break;
-        case 'too-many-requests':
-          message = 'Too many attempts. Please try again later.';
-          break;
-        case 'user-disabled':
-          message = 'This account has been disabled.';
-          break;
-        default:
-          message = e.message ?? 'Login failed.';
-      }
-
-      _showMessage(message);
+      debugPrint('Sign-in failed (${e.code}).');
+      _showMessage(loginErrorMessage(e.code));
     } catch (_) {
       _showMessage('Login failed. Please try again.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  Future<void> _forgotPassword() async {
-    final email = _emailController.text.trim();
-
-    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
-        .hasMatch(email)) {
-      _showMessage('Enter your email first to reset password.');
-      return;
-    }
-
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: email,
-      );
-
-      _showMessage(
-        'If this email is registered, a reset link will be sent.',
-      );
-    } on FirebaseAuthException catch (e) {
-      _showMessage(
-        e.code == 'too-many-requests'
-            ? 'Too many requests. Try again later.'
-            : 'Unable to send reset email. Please try again.',
-      );
     }
   }
 
@@ -133,10 +92,7 @@ class _LoginPageState extends State<LoginPage> {
       suffixIcon: suffix,
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 18,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(color: Color(0xFFCCC5C5)),
@@ -158,10 +114,7 @@ class _LoginPageState extends State<LoginPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/images/Background.png',
-            fit: BoxFit.cover,
-          ),
+          Image.asset('assets/images/Background.png', fit: BoxFit.cover),
 
           SafeArea(
             child: LayoutBuilder(
@@ -173,14 +126,11 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: 440,
-                      ),
+                      constraints: const BoxConstraints(maxWidth: 440),
                       child: Column(
                         children: [
                           Row(
-                            mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               IconButton(
                                 onPressed: () {
@@ -195,8 +145,10 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               IconButton(
                                 onPressed: () {
-                                  _showMessage(
-                                    'Help centre is coming soon.',
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const SupportPage(),
+                                    ),
                                   );
                                 },
                                 icon: const Icon(
@@ -243,9 +195,7 @@ class _LoginPageState extends State<LoginPage> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(
-                                alpha: 0.94,
-                              ),
+                              color: Colors.white.withValues(alpha: 0.94),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: const [
                                 BoxShadow(
@@ -258,8 +208,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: Form(
                               key: _formKey,
                               child: Column(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.stretch,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   Row(
                                     children: [
@@ -275,9 +224,12 @@ class _LoginPageState extends State<LoginPage> {
                                         initialValue: 'email',
                                         onSelected: (value) {
                                           if (value == 'phone') {
-                                            _showMessage(
-                                              'Phone number login '
-                                                  'will be added next.',
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const PhoneAuthPage(),
+                                              ),
                                             );
                                           }
                                         },
@@ -292,15 +244,13 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                         ],
                                         child: const Row(
-                                          mainAxisSize:
-                                          MainAxisSize.min,
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
                                               'Email Address',
                                               style: TextStyle(
                                                 color: rose,
-                                                fontWeight:
-                                                FontWeight.w600,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                             Icon(
@@ -317,15 +267,13 @@ class _LoginPageState extends State<LoginPage> {
 
                                   TextFormField(
                                     controller: _emailController,
-                                    keyboardType:
-                                    TextInputType.emailAddress,
+                                    keyboardType: TextInputType.emailAddress,
                                     decoration: _fieldDecoration(
                                       hint: 'Enter your email address',
                                       icon: Icons.email_outlined,
                                     ),
                                     validator: (value) {
-                                      final email =
-                                          value?.trim() ?? '';
+                                      final email = value?.trim() ?? '';
 
                                       if (email.isEmpty) {
                                         return 'Email is required';
@@ -359,8 +307,7 @@ class _LoginPageState extends State<LoginPage> {
                                       suffix: IconButton(
                                         onPressed: () {
                                           setState(() {
-                                            _hidePassword =
-                                            !_hidePassword;
+                                            _hidePassword = !_hidePassword;
                                           });
                                         },
                                         icon: Icon(
@@ -372,8 +319,7 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                     ),
                                     validator: (value) {
-                                      if (value == null ||
-                                          value.isEmpty) {
+                                      if (value == null || value.isEmpty) {
                                         return 'Password is required';
                                       }
                                       return null;
@@ -392,8 +338,7 @@ class _LoginPageState extends State<LoginPage> {
                                           activeColor: rose,
                                           onChanged: (value) {
                                             setState(() {
-                                              _rememberMe =
-                                                  value ?? false;
+                                              _rememberMe = value ?? false;
                                             });
                                           },
                                         ),
@@ -402,9 +347,7 @@ class _LoginPageState extends State<LoginPage> {
                                       const Expanded(
                                         child: Text(
                                           'Remember me',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                          ),
+                                          style: TextStyle(fontSize: 13),
                                         ),
                                       ),
                                       TextButton(
@@ -412,7 +355,8 @@ class _LoginPageState extends State<LoginPage> {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) => const ForgotPasswordPage(),
+                                              builder: (_) =>
+                                                  const ForgotPasswordPage(),
                                             ),
                                           );
                                         },
@@ -432,34 +376,32 @@ class _LoginPageState extends State<LoginPage> {
                                   SizedBox(
                                     height: 52,
                                     child: ElevatedButton(
-                                      onPressed:
-                                      _isLoading ? null : _login,
+                                      onPressed: _isLoading ? null : _login,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: rose,
                                         foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                       ),
                                       child: _isLoading
                                           ? const SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child:
-                                        CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                color: Colors.white,
+                                                strokeWidth: 2,
+                                              ),
+                                            )
                                           : const Text(
-                                        'Log In',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight:
-                                          FontWeight.w600,
-                                        ),
-                                      ),
+                                              'Log In',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
                                     ),
                                   ),
                                 ],
@@ -473,14 +415,10 @@ class _LoginPageState extends State<LoginPage> {
                             children: [
                               Expanded(child: Divider()),
                               Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                ),
+                                padding: EdgeInsets.symmetric(horizontal: 14),
                                 child: Text(
                                   'Or continue with',
-                                  style: TextStyle(
-                                    color: Color(0xFF817070),
-                                  ),
+                                  style: TextStyle(color: Color(0xFF817070)),
                                 ),
                               ),
                               Expanded(child: Divider()),
@@ -491,9 +429,20 @@ class _LoginPageState extends State<LoginPage> {
 
                           InkWell(
                             onTap: () {
-                              _showMessage(
-                                'Biometric login will be '
-                                    'implemented for supported devices.',
+                              showDialog<void>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Sign in on this device'),
+                                  content: const Text(
+                                    'Sign in with your email or linked phone first. In Profile → Security & Account → Device Authentication, enable Face ID or fingerprint unlock for your next visit on a supported device.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Continue with Email'),
+                                    ),
+                                  ],
+                                ),
                               );
                             },
                             child: Column(
@@ -514,8 +463,7 @@ class _LoginPageState extends State<LoginPage> {
 
                           Wrap(
                             alignment: WrapAlignment.center,
-                            crossAxisAlignment:
-                            WrapCrossAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               const Text(
                                 'Not a member yet?',
@@ -526,8 +474,7 @@ class _LoginPageState extends State<LoginPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) =>
-                                      const RegisterPage(),
+                                      builder: (_) => const RegisterPage(),
                                     ),
                                   );
                                 },
@@ -569,42 +516,3 @@ class _LoginPageState extends State<LoginPage> {
 
 // Temporary redirect after successful login.
 // Replace with your main AuthGate once routing is finalised.
-class _SignedInRedirect extends StatelessWidget {
-  const _SignedInRedirect();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _VisitorHomeRedirect();
-  }
-}
-
-class _VisitorHomeRedirect extends StatelessWidget {
-  const _VisitorHomeRedirect();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _HomeLoader();
-  }
-}
-
-class _HomeLoader extends StatelessWidget {
-  const _HomeLoader();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _ActualVisitorHome();
-  }
-}
-
-class _ActualVisitorHome extends StatelessWidget {
-  const _ActualVisitorHome();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Login successful!'),
-      ),
-    );
-  }
-}

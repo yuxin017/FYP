@@ -1,0 +1,1091 @@
+
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =====================================================
+    // COMMON AUTHENTICATION FUNCTIONS
+    // =====================================================
+
+    function signedIn() {
+      return request.auth != null && accountSessionAllowed();
+    }
+
+    // Member A module 5: account profile and trusted security controls.
+    function accountSessionAllowed() {
+      let path = /databases/$(database)/documents/accountSecurity/$(request.auth.uid);
+      return !exists(path) || (!get(path).data.get('closing',false)
+        && request.auth.token.auth_time > get(path).data.get('revokedBefore',0));
+    }
+    match /accountSecurity/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow write, list: if false;
+    }
+    match /accountSessions/{id} { allow read, write: if false; }
+    match /accountClosures/{uid} { allow read, write: if false; }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.get('admin', false) == true;
+    }
+
+    function verifiedVisitor() {
+      return signedIn()
+        && request.auth.token.email_verified == true;
+    }
+
+    function ownsBooking() {
+      return signedIn()
+        && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // =====================================================
+    // VISITOR MANAGEMENT
+    // =====================================================
+
+    match /visitors/{visitorId} {
+
+      // Visitor can read their own profile.
+      // Admin can read visitor profiles.
+      allow get: if (
+        signedIn() && request.auth.uid == visitorId
+      ) || isAdmin();
+
+      // Only admins can list all visitors.
+      allow list: if isAdmin();
+
+      // Create a new visitor profile.
+      allow create: if signedIn()
+        && request.auth.uid == visitorId
+
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'fullName',
+          'email',
+          'phoneNumber',
+          'role',
+          'loyaltyPoints',
+          'createdAt'
+        ])
+
+        && request.resource.data.keys().hasAll([
+          'uid',
+          'fullName',
+          'email',
+          'phoneNumber',
+          'role',
+          'loyaltyPoints',
+          'createdAt'
+        ])
+
+        && request.resource.data.uid == visitorId
+        && request.resource.data.email
+          == request.auth.token.email
+
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() >= 2
+
+        && request.resource.data.phoneNumber is string
+        && request.resource.data.phoneNumber.size() >= 8
+
+        && request.resource.data.role == 'visitor'
+        && request.resource.data.loyaltyPoints == 0
+        && request.resource.data.createdAt == request.time;
+
+      // Update visitor profile.
+      allow update: if signedIn()
+        && request.auth.uid == visitorId
+
+        && request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly([
+            'fullName',
+            'nickname',
+            'phoneNumber',
+            'dateOfBirth',
+            'gender',
+            'profilePhotoBase64',
+            'heightCm',
+            'foodPreferences',
+            'parkInterests',
+            'faceRecognitionConsent'
+          ])
+
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.loyaltyPoints
+          == resource.data.loyaltyPoints
+        && request.resource.data.createdAt
+          == resource.data.createdAt
+
+        // Full name validation.
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() >= 2 && request.resource.data.fullName.size() <= 100
+        && !request.resource.data.fullName.matches('.*[\\r\\n\\t].*')
+        && (!request.resource.data.keys().hasAny(['nickname']) || (request.resource.data.nickname is string && request.resource.data.nickname.size() <= 40))
+
+        // Phone number validation.
+        && (
+          !request.resource.data.keys()
+            .hasAny(['phoneNumber'])
+          || (
+            request.resource.data.phoneNumber is string
+            && (
+              request.resource.data.phoneNumber == ''
+              || request.resource.data.phoneNumber
+                .matches('^\\+?[0-9]{9,15}$')
+            )
+          )
+        )
+
+        // Gender validation.
+        && (
+          !request.resource.data.keys()
+            .hasAny(['gender'])
+          || request.resource.data.gender in [
+            'Female',
+            'Male',
+            'Other',
+            'Prefer not to say'
+          ]
+        )
+
+        // Date of birth validation.
+        && (
+          !request.resource.data.keys()
+            .hasAny(['dateOfBirth'])
+          || (
+            request.resource.data.dateOfBirth is timestamp
+            && request.resource.data.dateOfBirth
+              <= request.time
+          )
+        )
+
+        // Profile photo validation.
+        && (
+          !request.resource.data.keys()
+            .hasAny(['profilePhotoBase64'])
+          || (
+            request.resource.data.profilePhotoBase64 is string
+            && request.resource.data.profilePhotoBase64.size() >= 0
+            && request.resource.data.profilePhotoBase64.size()
+              <= 150000
+            && request.resource.data.profilePhotoBase64
+              .matches('^[A-Za-z0-9+/]*={0,2}$')
+          )
+        )
+
+        // Height validation.
+        && (
+          !request.resource.data.keys()
+            .hasAny(['heightCm'])
+          || request.resource.data.heightCm == null
+          || (
+            request.resource.data.heightCm is int
+            && request.resource.data.heightCm >= 50
+            && request.resource.data.heightCm <= 250
+          )
+        )
+
+        // Food preferences validation.
+        && (
+          !request.resource.data.keys()
+            .hasAny(['foodPreferences'])
+          || (
+            request.resource.data.foodPreferences is list
+            && request.resource.data.foodPreferences.size() <= 12
+            && request.resource.data.foodPreferences.hasOnly(['No preference','All','Asian','Halal','Middle Eastern','Vegetarian','Western','Vegan','No pork','No seafood'])
+            && (!request.resource.data.foodPreferences.hasAny(['No preference','All']) || request.resource.data.foodPreferences.size() == 1)
+          )
+        )
+
+        // Park interests validation.
+        && (
+          !request.resource.data.keys()
+            .hasAny(['parkInterests'])
+          || (
+            request.resource.data.parkInterests is list
+            && request.resource.data.parkInterests.size() <= 12
+            && request.resource.data.parkInterests.hasOnly(['Family rides','Thrill rides','Adventure rides','Shows','Food & dining','Shopping & souvenirs','Photo spots','Water rides','Family Rides','Thrill Rides','Adventure Rides','Live Entertainment','Dining & Snacks','Shopping & Souvenirs','Instagrammable Moments','Water Rides'])
+          )
+        )
+
+        // Face recognition consent validation.
+        && (
+          !request.resource.data.keys()
+            .hasAny(['faceRecognitionConsent'])
+          || request.resource.data.faceRecognitionConsent is bool
+        );
+
+      // Prevent direct deletion.
+      allow delete: if false;
+    }
+
+    // =====================================================
+    // ADMIN TICKET TYPES MANAGEMENT
+    // =====================================================
+
+    function validTicketType(data) {
+      return data.name is string
+        && data.name.size() >= 2
+        && data.name.size() <= 100
+
+        && data.description is string
+        && data.description.size() <= 2000
+
+        && data.category in [
+          'Adult',
+          'Child',
+          'Senior',
+          'Family',
+          'Group',
+          'Other'
+        ]
+
+        && data.priceSen is int
+        && data.priceSen >= 0
+        && data.priceSen <= 10000000
+
+        && data.currency == 'MYR'
+
+        && data.validityDays is int
+        && data.validityDays >= 1
+        && data.validityDays <= 365
+
+        && data.maxPerOrder is int
+        && data.maxPerOrder >= 1
+        && data.maxPerOrder <= 100
+
+        && data.isActive is bool;
+    }
+
+    function validTicketTypeKeys(data) {
+      return data.keys().hasAll([
+        'name',
+        'description',
+        'category',
+        'priceSen',
+        'currency',
+        'validityDays',
+        'maxPerOrder',
+        'isActive',
+        'createdAt',
+        'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'name',
+        'description',
+        'category',
+        'priceSen',
+        'currency',
+        'validityDays',
+        'maxPerOrder',
+        'isActive',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    match /ticket_types/{ticketTypeId} {
+
+      // Admin can view ticket types.
+      allow get, list: if isAdmin();
+
+      // Admin can create ticket types.
+      allow create: if isAdmin()
+        && validTicketTypeKeys(request.resource.data)
+        && validTicketType(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // Admin can update ticket types.
+      allow update: if isAdmin()
+        && validTicketTypeKeys(request.resource.data)
+        && validTicketType(request.resource.data)
+        && request.resource.data.createdAt
+          == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      // Deactivate instead of deleting.
+      allow delete: if false;
+    }
+
+    // =====================================================
+    // TICKET PURCHASE VALIDATION FUNCTIONS
+    // =====================================================
+
+    function validVisitDate(value) {
+      let parts = value.split('-');
+      let visit = timestamp.date(
+        int(parts[0]),
+        int(parts[1]),
+        int(parts[2])
+      );
+
+      let parkNow = request.time + duration.value(8, 'h');
+
+      let today = timestamp.date(
+        parkNow.year(),
+        parkNow.month(),
+        parkNow.day()
+      );
+
+      return value is string
+        && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && visit.year() == int(parts[0])
+        && visit.month() == int(parts[1])
+        && visit.day() == int(parts[2])
+        && visit >= today
+        && visit <= today + duration.value(365, 'd');
+    }
+
+    function issuedTicket(id, orderId) {
+      let ticket = getAfter(
+        /databases/$(database)/documents/tickets/$(id)
+      ).data;
+
+      return id is string
+        && id.matches('^' + orderId + '_([1-9]|10)$')
+        && ticket.ownerUid == request.auth.uid
+        && ticket.orderId == orderId;
+    }
+
+    function validNewOrder(id, data) {
+      return data.keys().hasAll([
+        'ownerUid',
+        'requestId',
+        'ticketIds',
+        'packageId',
+        'packageName',
+        'quantity',
+        'visitDate',
+        'unitPriceMinor',
+        'totalMinor',
+        'currency',
+        'status',
+        'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'ownerUid',
+        'requestId',
+        'ticketIds',
+        'packageId',
+        'packageName',
+        'quantity',
+        'visitDate',
+        'unitPriceMinor',
+        'totalMinor',
+        'currency',
+        'status',
+        'createdAt'
+      ])
+
+      && data.ownerUid == request.auth.uid
+      && data.requestId == id
+      && id.matches('^[a-f0-9]{48}$')
+
+      && data.packageId is string
+      && data.packageId.matches('^[A-Za-z0-9_-]{1,100}$')
+
+      && data.packageName is string
+
+      && data.quantity is int
+      && data.quantity >= 1
+      && data.quantity <= 10
+
+      && data.unitPriceMinor is int
+      && data.unitPriceMinor > 0
+      && data.unitPriceMinor <= 10000000
+
+      && data.totalMinor
+        == data.unitPriceMinor * data.quantity
+
+      && data.currency == 'MYR'
+      && data.status == 'completed'
+      && data.createdAt == request.time
+      && validVisitDate(data.visitDate)
+
+      && data.ticketIds is list
+      && data.ticketIds.size() == data.quantity
+      && data.ticketIds.toSet().size() == data.quantity
+
+      && issuedTicket(data.ticketIds[0], id)
+      && (
+        data.quantity < 2
+        || issuedTicket(data.ticketIds[1], id)
+      )
+      && (
+        data.quantity < 3
+        || issuedTicket(data.ticketIds[2], id)
+      )
+      && (
+        data.quantity < 4
+        || issuedTicket(data.ticketIds[3], id)
+      )
+      && (
+        data.quantity < 5
+        || issuedTicket(data.ticketIds[4], id)
+      )
+      && (
+        data.quantity < 6
+        || issuedTicket(data.ticketIds[5], id)
+      )
+      && (
+        data.quantity < 7
+        || issuedTicket(data.ticketIds[6], id)
+      )
+      && (
+        data.quantity < 8
+        || issuedTicket(data.ticketIds[7], id)
+      )
+      && (
+        data.quantity < 9
+        || issuedTicket(data.ticketIds[8], id)
+      )
+      && (
+        data.quantity < 10
+        || issuedTicket(data.ticketIds[9], id)
+      );
+    }
+
+    function validNewTicket(id, data) {
+      let orderPath =
+        /databases/$(database)/documents/orders/$(data.orderId);
+
+      let order = getAfter(orderPath).data;
+
+      let pack = get(
+        /databases/$(database)/documents/ticketPackages/$(data.packageId)
+      ).data;
+
+      return data.keys().hasAll([
+        'ownerUid',
+        'orderId',
+        'packageId',
+        'packageName',
+        'visitDate',
+        'status',
+        'unitPriceMinor',
+        'currency',
+        'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'ownerUid',
+        'orderId',
+        'packageId',
+        'packageName',
+        'visitDate',
+        'status',
+        'unitPriceMinor',
+        'currency',
+        'createdAt'
+      ])
+
+      && !exists(orderPath)
+      && order.ownerUid == request.auth.uid
+      && data.ownerUid == request.auth.uid
+      && id in order.ticketIds
+
+      && data.packageId == order.packageId
+      && data.packageName == order.packageName
+
+      && data.unitPriceMinor == order.unitPriceMinor
+      && data.visitDate == order.visitDate
+
+      && pack.active == true
+      && pack.currency == 'MYR'
+      && data.packageName == pack.name
+      && data.unitPriceMinor == pack.priceMinor
+
+      && data.currency == 'MYR'
+      && data.status == 'valid'
+      && data.createdAt == request.time;
+    }
+
+    // =====================================================
+    // EXISTING TICKET PACKAGES
+    // =====================================================
+
+    // Version 2 supports separately priced guests and multiple dated passes.
+    function itemAmount(items, index) { return items.size() > index ? items[index].unitPriceMinor : 0; }
+    function issuedJourney(ticketId, orderId, item, index) {
+      let ticket = getAfter(/databases/$(database)/documents/tickets/$(ticketId)).data;
+      return ticket.orderId == orderId && ticket.item == item;
+    }
+    function validJourneyOrder(id, data) {
+      let items = data.items;
+      let ids = data.ticketIds;
+      let count = data.quantity;
+      return data.keys().hasOnly(['version','ownerUid','requestId','fingerprint','packageId',
+          'packageName','visitDate','quantity','ticketIds','items','lineItems','subtotalMinor',
+          'pointsUsed','totalMinor','paymentMethod','cardLast4','currency','status','displayCode','createdAt'])
+        && data.version == 2 && data.ownerUid == request.auth.uid
+        && data.requestId == id && id.matches('^[a-f0-9]{48}$')
+        && data.fingerprint is string && data.fingerprint.matches('^[a-f0-9]{64}$')
+        && data.quantity is int && data.quantity >= 1 && count <= 10
+        && data.items is list && data.items.size() == data.quantity
+        && data.ticketIds is list && data.ticketIds.size() == data.quantity
+        && data.ticketIds.toSet().size() == data.quantity
+        && data.lineItems is list && data.lineItems.size() >= 1 && data.lineItems.size() <= 5
+        && data.subtotalMinor == itemAmount(items, 0) + itemAmount(items, 1) + itemAmount(items, 2) + itemAmount(items, 3) + itemAmount(items, 4) + itemAmount(items, 5) + itemAmount(items, 6) + itemAmount(items, 7) + itemAmount(items, 8) + itemAmount(items, 9)
+        && data.pointsUsed is int && data.pointsUsed >= 0 && data.pointsUsed % 100 == 0
+        && data.pointsUsed <= data.subtotalMinor && data.totalMinor == data.subtotalMinor - data.pointsUsed
+        && data.paymentMethod in ['card','fpx','touch-go','apple-pay','nfc']
+        && data.cardLast4 is string && (data.cardLast4 == '' || data.cardLast4.matches('^[0-9]{4}$'))
+        && data.currency == 'MYR' && data.status == 'completed' && data.createdAt == request.time
+        && (count <= 0 || issuedJourney(ids[0], id, items[0], 0))
+        && (count <= 1 || issuedJourney(ids[1], id, items[1], 1))
+        && (count <= 2 || issuedJourney(ids[2], id, items[2], 2))
+        && (count <= 3 || issuedJourney(ids[3], id, items[3], 3))
+        && (count <= 4 || issuedJourney(ids[4], id, items[4], 4))
+        && (count <= 5 || issuedJourney(ids[5], id, items[5], 5))
+        && (count <= 6 || issuedJourney(ids[6], id, items[6], 6))
+        && (count <= 7 || issuedJourney(ids[7], id, items[7], 7))
+        && (count <= 8 || issuedJourney(ids[8], id, items[8], 8))
+        && (count <= 9 || issuedJourney(ids[9], id, items[9], 9));
+    }
+    function validRedemption(order) {
+      let path = /databases/$(database)/documents/visitors/$(request.auth.uid);
+      return order.pointsUsed == 0 || (
+        get(path).data.loyaltyPoints >= order.pointsUsed
+        && getAfter(path).data.loyaltyPoints == get(path).data.loyaltyPoints - order.pointsUsed
+        && getAfter(path).data.lastRedemptionOrderId == order.requestId);
+    }
+    function validJourneyTicket(id, data) {
+      let orderPath = /databases/$(database)/documents/orders/$(data.orderId);
+      let order = getAfter(orderPath).data;
+      let pack = get(/databases/$(database)/documents/ticketPackages/$(data.packageId)).data;
+      let parts = data.visitDate.split('-');
+      let start = timestamp.date(int(parts[0]), int(parts[1]), int(parts[2]));
+      let endParts = data.validUntil.split('-');
+      let end = timestamp.date(int(endParts[0]), int(endParts[1]), int(endParts[2]));
+      return data.keys().hasOnly(['version','index','ownerUid','purchaserUid','orderId',
+          'packageId','packageName','visitDate','validUntil','durationDays','ticketType',
+          'guestName','guestEmail','unitPriceMinor','displayCode','currency','status','createdAt','item'])
+        && data.version == 2 && !exists(orderPath) && order.version == 2
+        && data.index is int && data.index >= 0 && data.index < order.quantity
+        && id == order.ticketIds[data.index] && data.ownerUid == request.auth.uid
+        && data.purchaserUid == request.auth.uid && order.ownerUid == request.auth.uid
+        && data.item == {'packageId':data.packageId,'packageName':data.packageName,
+          'visitDate':data.visitDate,'validUntil':data.validUntil,'durationDays':data.durationDays,
+          'ticketType':data.ticketType,'guestName':data.guestName,'guestEmail':data.guestEmail,
+          'unitPriceMinor':data.unitPriceMinor}
+        && pack.active == true && pack.currency == 'MYR' && data.packageName == pack.name
+        && data.ticketType in ['adult','child']
+        && data.unitPriceMinor == (data.ticketType == 'child' ? pack.get('childPriceMinor', pack.priceMinor) : pack.priceMinor)
+        && data.unitPriceMinor is int && data.unitPriceMinor > 0 && data.unitPriceMinor <= 10000000
+        && data.durationDays == pack.get('durationDays', 1) && data.durationDays >= 1 && data.durationDays <= 366
+        && validVisitDate(data.visitDate) && end == start + duration.value(data.durationDays - 1, 'd')
+        && data.guestName is string && data.guestName.size() >= 2 && data.guestName.size() <= 100
+        && data.guestEmail is string && data.guestEmail.size() <= 254
+        && data.guestEmail.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
+        && data.displayCode is string && data.displayCode.matches('^TP-[0-9]{6}-[A-F0-9]{8}-[0-9]{2}$')
+        && data.currency == 'MYR' && data.status == 'valid' && data.createdAt == request.time
+        && validRedemption(order);
+    }
+    match /visitors/{id} {
+      allow update: if verifiedVisitor() && request.auth.uid == id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loyaltyPoints','lastRedemptionOrderId'])
+        && request.resource.data.lastRedemptionOrderId is string
+        && !exists(/databases/$(database)/documents/orders/$(request.resource.data.lastRedemptionOrderId))
+        && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.lastRedemptionOrderId)).data.ownerUid == id
+        && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.lastRedemptionOrderId)).data.pointsUsed > 0
+        && request.resource.data.loyaltyPoints == resource.data.loyaltyPoints -
+          getAfter(/databases/$(database)/documents/orders/$(request.resource.data.lastRedemptionOrderId)).data.pointsUsed
+        && request.resource.data.loyaltyPoints >= 0;
+    }
+    match /ticketReferences/{code} {
+      allow get: if signedIn() && (resource.data.ownerUid == request.auth.uid ||
+        (verifiedVisitor() && resource.data.guestEmail == request.auth.token.email.lower()));
+      allow list, update, delete: if false;
+      allow create: if verifiedVisitor()
+        && request.resource.data.keys().hasOnly(['ticketId','ownerUid','guestEmail'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/tickets/$(request.resource.data.ticketId)).data.displayCode == code
+        && getAfter(/databases/$(database)/documents/tickets/$(request.resource.data.ticketId)).data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/tickets/$(request.resource.data.ticketId)).data.guestEmail == request.resource.data.guestEmail;
+    }
+    match /ticketPackages/{id} {
+
+      // Existing visitor ticket package access.
+      allow read: if signedIn()
+        && resource.data.active == true;
+
+      allow write: if false;
+    }
+
+    // =====================================================
+    // TICKET ORDERS
+    // =====================================================
+
+    match /orders/{id} {
+
+      allow get: if signedIn() && (
+        !exists(
+          /databases/$(database)/documents/orders/$(id)
+        )
+        || ownsBooking()
+      );
+
+      allow list: if ownsBooking();
+
+      allow create: if verifiedVisitor() && (request.resource.data.get('version', 1) == 2
+        ? validJourneyOrder(id, request.resource.data) : validNewOrder(id, request.resource.data));
+
+      allow update, delete: if false;
+    }
+
+    // =====================================================
+    // ISSUED TICKETS
+    // =====================================================
+
+    match /tickets/{id} {
+
+      allow read: if ownsBooking() || (verifiedVisitor() && resource.data.get('guestEmail', '') == request.auth.token.email.lower());
+
+      allow create: if verifiedVisitor() && activeVisitor(request.auth.uid) && (request.resource.data.get('version', 1) == 2
+        ? validJourneyTicket(id, request.resource.data) : validNewTicket(id, request.resource.data));
+
+      allow update, delete: if false;
+    }
+
+    // MEMBER B: ATTRACTIONS AND BOOKING CAPACITY
+    function module1AttractionFields() {
+      return ['name', 'category', 'status', 'minHeightCm', 'mapX', 'mapY',
+        'description', 'coverImageBase64', 'crowdLevel', 'standbyMinutes', 'updatedAt', 'reservationCapacity'];
+    }
+
+    function module1FiniteNumber(value) {
+      // NaN and infinities cannot produce a zero self-difference.
+      return value is number && value - value == 0;
+    }
+
+    function module1ValidAttraction(data) {
+      return data.keys().hasAll(['name', 'category', 'status', 'minHeightCm', 'mapX', 'mapY'])
+        && data.name is string && data.name.size() <= 80 && data.name.matches('.*\\S.*')
+        && data.category is string && data.category.size() <= 60 && data.category.matches('.*\\S.*')
+        && data.status in ['open', 'closed', 'maintenance']
+        && data.minHeightCm is int && data.minHeightCm >= 0 && data.minHeightCm <= 250
+        && data.get('reservationCapacity', 10) is int
+        && data.get('reservationCapacity', 10) >= 1 && data.get('reservationCapacity', 10) <= 1000
+        && module1FiniteNumber(data.mapX) && module1FiniteNumber(data.mapY)
+        && (data.get('description', null) == null || (data.description is string && data.description.size() <= 1200))
+        && (data.get('coverImageBase64', null) == null || (data.coverImageBase64 is string
+          && data.coverImageBase64.size() <= 240000 && data.coverImageBase64.matches('^[A-Za-z0-9+/]*={0,2}$')))
+        && (data.get('crowdLevel', null) == null || data.crowdLevel in ['low', 'moderate', 'busy'])
+        && (data.get('standbyMinutes', null) == null || (data.standbyMinutes is int && data.standbyMinutes >= 0 && data.standbyMinutes <= 600))
+        && (data.get('updatedAt', null) == null || data.updatedAt is timestamp);
+    }
+
+    match /attractions/{attractionId} {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(module1AttractionFields())
+        && module1ValidAttraction(request.resource.data)
+        && (request.resource.data.get('updatedAt', null) == null || request.resource.data.updatedAt == request.time);
+      allow update: if isAdmin()
+        && resource.data.get('deletedAt', null) == null
+        && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(module1AttractionFields())
+          && module1ValidAttraction(request.resource.data)
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['updatedAt']) || request.resource.data.updatedAt == request.time))
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deletedAt', 'updatedAt', 'status'])
+          && request.resource.data.deletedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.status == 'closed'));
+      // Delete is a retained tombstone so booking references remain valid.
+      allow delete: if false;
+    }
+
+    // The reservation function materializes windows and maintains their counts.
+    match /attractionSlots/{slotId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // MEMBER B: RESERVATION READ ACCESS
+    function reservationSignedIn() { return request.auth != null; }
+    function reservationAdmin() { return reservationSignedIn() && request.auth.token.get('admin', false) == true; }
+    match /reservations/{reservationId} {
+      allow get: if reservationSignedIn() && (reservationAdmin()
+        || !exists(/databases/$(database)/documents/reservations/$(reservationId))
+        || resource.data.ownerUid == request.auth.uid);
+      allow list: if reservationSignedIn() && (reservationAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+    // reservationGuards, attractionQueueGuards and reservationRequests stay private
+    // under the shared default-deny policy. The Admin SDK maintains them.
+
+    // =====================================================
+    // DEFAULT DENY
+    // =====================================================
+
+    // Member A module 2: administrator operations. Existing module rules remain above.
+    function parkDay() {
+      let now = request.time + duration.value(8, 'h');
+      return timestamp.date(now.year(), now.month(), now.day());
+    }
+    function parkDayKey() {
+      let day = parkDay();
+      return string(day.year()) + '-' + (day.month() < 10 ? '0' : '') + string(day.month())
+        + '-' + (day.day() < 10 ? '0' : '') + string(day.day());
+    }
+    function activeVisitor(uid) {
+      let path = /databases/$(database)/documents/visitorAccess/$(uid);
+      return !exists(path) || get(path).data.status == 'active';
+    }
+    function adminPackage(data) {
+      return data.keys().hasOnly(['name','description','priceMinor','childPriceMinor','currency','active',
+          'category','imageAsset','durationDays','sortOrder','benefits','createdAt','updatedAt','updatedBy'])
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 100
+        && data.description is string && data.description.size() <= 2000
+        && data.priceMinor is int && data.priceMinor > 0 && data.priceMinor <= 10000000
+        && (!data.keys().hasAny(['childPriceMinor']) || (data.childPriceMinor is int && data.childPriceMinor > 0 && data.childPriceMinor <= 10000000))
+        && data.currency == 'MYR' && data.active is bool && data.category in ['day','annual','addon']
+        && data.durationDays is int && data.durationDays >= 1 && data.durationDays <= 365
+        && data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 999
+        && data.imageAsset in ['assets/images/ticketing/castle.png','assets/images/ticketing/annual-pass.png']
+        && (!data.keys().hasAny(['benefits']) || (data.benefits is list && data.benefits.size() <= 12))
+        && data.updatedAt == request.time && data.updatedBy == request.auth.uid;
+    }
+    match /ticketPackages/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && adminPackage(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && adminPackage(request.resource.data)
+        && request.resource.data.createdAt == resource.data.get('createdAt', request.time);
+    }
+    match /orders/{id} { allow read: if isAdmin(); }
+    match /ticketReferences/{id} { allow get: if isAdmin(); }
+    match /visitors/{id} {
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName','phoneNumber',
+          'dateOfBirth','gender','heightCm','foodPreferences','parkInterests'])
+        && request.resource.data.fullName is string && request.resource.data.fullName.size() >= 2
+        && request.resource.data.fullName.size() <= 100
+        && (request.resource.data.get('phoneNumber','') == '' || request.resource.data.phoneNumber.matches('^\\+?[0-9]{9,15}$'))
+        && (request.resource.data.get('heightCm',null) == null || (request.resource.data.heightCm is int && request.resource.data.heightCm >= 50 && request.resource.data.heightCm <= 250))
+        && (request.resource.data.get('dateOfBirth',null) == null || (request.resource.data.dateOfBirth is timestamp && request.resource.data.dateOfBirth <= request.time));
+    }
+    match /visitorAdmin/{id} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['membership','riskLevel','watchlisted','notes','updatedAt','updatedBy'])
+        && request.resource.data.membership in ['normal','bronze','silver','gold']
+        && request.resource.data.riskLevel in ['normal','review','high']
+        && request.resource.data.watchlisted is bool
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000
+        && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+    match /visitorAccess/{id} {
+      allow get: if signedIn() && (request.auth.uid == id || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['status','reason','updatedAt','updatedBy'])
+        && request.resource.data.status in ['active','suspended','archived']
+        && (id != request.auth.uid || request.resource.data.status == 'active')
+        && request.resource.data.reason is string && request.resource.data.reason.size() <= 300
+        && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+    match /visitorSessions/{id} {
+      allow get: if signedIn() && (isAdmin() || id.matches('^' + request.auth.uid + '_[0-9]{4}-[0-9]{2}-[0-9]{2}$'));
+      allow list: if isAdmin();
+      allow create: if verifiedVisitor() && activeVisitor(request.auth.uid)
+        && id == request.auth.uid + '_' + parkDayKey()
+        && request.resource.data.keys().hasOnly(['ownerUid','day','action','createdAt','lastSeenAt'])
+        && request.resource.data.ownerUid == request.auth.uid && request.resource.data.day == parkDayKey()
+        && request.resource.data.action == 'session_opened' && request.resource.data.createdAt == request.time
+        && request.resource.data.lastSeenAt == request.time;
+      allow update: if verifiedVisitor() && activeVisitor(request.auth.uid) && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time;
+      allow delete: if false;
+    }
+    match /adminAudit/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && id.matches('^[a-f0-9]{48}$')
+        && request.resource.data.keys().hasOnly(['action','targetIds','actorUid','details','createdAt'])
+        && request.resource.data.action in ['visitor_updated','visitor_status_updated','watchlist_added',
+          'watchlist_removed','package_updated','package_created']
+        && request.resource.data.targetIds is list && request.resource.data.targetIds.size() >= 1 && request.resource.data.targetIds.size() <= 50
+        && request.resource.data.details is map && request.resource.data.details.size() <= 10
+        && request.resource.data.actorUid == request.auth.uid && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+    function admissionDate(value) {
+      let parts = value.split('-');
+      return timestamp.date(int(parts[0]),int(parts[1]),int(parts[2]));
+    }
+    function validAdmission(id, before, after) {
+      let day = parkDay();
+      let previous = before.get('admissionDays', []);
+      let receipt = getAfter(/databases/$(database)/documents/admissions/$(after.validationId)).data;
+      let last = admissionDate(before.get('validUntil', before.visitDate));
+      return before.status == 'valid' && !(day in previous)
+        && day >= admissionDate(before.visitDate) && day <= last
+        && after.diff(before).affectedKeys().hasOnly(['status','usedAt','usedBy','validationId','lastAdmissionDay','admissionDays'])
+        && after.status == (day == last ? 'used' : 'valid')
+        && after.usedAt == request.time && after.usedBy == request.auth.uid
+        && after.validationId is string && after.validationId.matches('^[a-f0-9]{48}$')
+        && after.lastAdmissionDay == day && after.admissionDays == previous.concat([day])
+        && receipt.ticketId == id && receipt.actorUid == request.auth.uid && receipt.visitDay == day;
+    }
+    match /tickets/{id} {
+      allow read: if isAdmin();
+      allow update: if isAdmin() && validAdmission(id, resource.data, request.resource.data);
+    }
+    match /admissions/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && id.matches('^[a-f0-9]{48}$')
+        && request.resource.data.keys().hasOnly(['ticketId','orderId','ownerUid','actorUid','visitDay','createdAt','outcome'])
+        && request.resource.data.actorUid == request.auth.uid && request.resource.data.outcome == 'admitted'
+        && request.resource.data.visitDay == parkDay() && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/tickets/$(request.resource.data.ticketId)).data.validationId == id
+        && getAfter(/databases/$(database)/documents/tickets/$(request.resource.data.ticketId)).data.usedBy == request.auth.uid
+        && getAfter(/databases/$(database)/documents/tickets/$(request.resource.data.ticketId)).data.ownerUid == request.resource.data.ownerUid
+        && getAfter(/databases/$(database)/documents/tickets/$(request.resource.data.ticketId)).data.orderId == request.resource.data.orderId;
+      allow update, delete: if false;
+    }
+
+    // Member A module 3: purchase points and single-use reward vouchers.
+    function rewardsOwner(uid) {
+      return verifiedVisitor() && request.auth.uid == uid && activeVisitor(uid);
+    }
+    function rewardsBalanceChanged(eventId, delta) {
+      let profile = /databases/$(database)/documents/visitors/$(request.auth.uid);
+      return getAfter(profile).data.loyaltyPoints == get(profile).data.loyaltyPoints + delta
+        && getAfter(profile).data.loyaltyPoints >= 0
+        && getAfter(profile).data.lastLoyaltyEventId == eventId;
+    }
+    function validRewardCatalogue(data) {
+      return data.keys().hasOnly(['name','subtitle','category','benefit','pointsCost',
+          'validityDays','instructions','terms','active','sortOrder','updatedAt','updatedBy'])
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 100
+        && data.subtitle is string && data.subtitle.size() <= 160
+        && data.benefit is string && data.benefit.size() <= 500
+        && data.category in ['dining','shopping','photo']
+        && data.pointsCost is int && data.pointsCost >= 1 && data.pointsCost <= 100000
+        && data.validityDays is int && data.validityDays >= 1 && data.validityDays <= 366
+        && data.instructions is list && data.instructions.size() >= 1 && data.instructions.size() <= 6
+        && data.terms is list && data.terms.size() >= 1 && data.terms.size() <= 10
+        && data.active is bool && data.sortOrder is int
+        && data.updatedAt == request.time && data.updatedBy == request.auth.uid;
+    }
+    match /rewardCatalogue/{id} {
+      allow read: if signedIn() && (resource.data.active == true || isAdmin());
+      allow create, update: if isAdmin() && validRewardCatalogue(request.resource.data);
+    }
+    function validEarnEvent(id, data) {
+      let order = get(/databases/$(database)/documents/orders/$(data.sourceId)).data;
+      return data.kind == 'earned' && id == 'earn_' + data.sourceId
+        && data.sourceId.matches('^[a-f0-9]{48}$')
+        && order.version == 2 && order.ownerUid == data.ownerUid
+        && order.status == 'completed' && order.currency == 'MYR'
+        && order.totalMinor is int && order.totalMinor >= 100
+        && data.delta == int(order.totalMinor / 100);
+    }
+    function validVoucherEvent(id, data) {
+      let path = /databases/$(database)/documents/rewardVouchers/$(data.sourceId);
+      let voucher = getAfter(path).data;
+      return data.kind == 'redeemed' && id == 'redeem_' + data.sourceId
+        && data.sourceId.matches('^[a-f0-9]{48}$') && !exists(path)
+        && voucher.ownerUid == data.ownerUid && voucher.issuedAt == request.time
+        && data.delta == -voucher.pointsCost;
+    }
+    match /loyaltyEvents/{id} {
+      allow get: if signedIn() && (!exists(/databases/$(database)/documents/loyaltyEvents/$(id))
+        || resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow list: if signedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if rewardsOwner(request.resource.data.ownerUid)
+        && request.resource.data.keys().hasOnly(['ownerUid','kind','sourceId','delta','createdAt'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.delta is int && request.resource.data.delta != 0
+        && request.resource.data.sourceId is string
+        && (validEarnEvent(id, request.resource.data) || validVoucherEvent(id, request.resource.data))
+        && rewardsBalanceChanged(id, request.resource.data.delta);
+    }
+    match /visitors/{id} {
+      allow update: if rewardsOwner(id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['loyaltyPoints','lastLoyaltyEventId'])
+        && request.resource.data.loyaltyPoints is int && request.resource.data.loyaltyPoints >= 0
+        && request.resource.data.lastLoyaltyEventId is string
+        && !exists(/databases/$(database)/documents/loyaltyEvents/$(request.resource.data.lastLoyaltyEventId))
+        && getAfter(/databases/$(database)/documents/loyaltyEvents/$(request.resource.data.lastLoyaltyEventId)).data.ownerUid == id
+        && request.resource.data.loyaltyPoints == resource.data.loyaltyPoints
+          + getAfter(/databases/$(database)/documents/loyaltyEvents/$(request.resource.data.lastLoyaltyEventId)).data.delta;
+    }
+    function validNewRewardVoucher(id, data) {
+      let offer = get(/databases/$(database)/documents/rewardCatalogue/$(data.rewardId)).data;
+      let event = /databases/$(database)/documents/loyaltyEvents/$('redeem_' + id);
+      return id.matches('^[a-f0-9]{48}$')
+        && data.keys().hasOnly(['ownerUid','rewardId','reward','pointsCost','status','issuedAt','expiresAt','usedAt','usedBy'])
+        && offer.active == true && data.pointsCost == offer.pointsCost
+        && data.reward == {'name':offer.name,'subtitle':offer.subtitle,'category':offer.category,
+          'benefit':offer.benefit,'terms':offer.terms,'instructions':offer.instructions,'validityDays':offer.validityDays}
+        && data.status == 'available' && data.issuedAt == request.time
+        && data.expiresAt == parkDay() + duration.value(offer.validityDays, 'd') - duration.value(8, 'h')
+        && data.usedAt == null && data.usedBy == ''
+        && !exists(event) && getAfter(event).data.ownerUid == data.ownerUid
+        && getAfter(event).data.kind == 'redeemed' && getAfter(event).data.sourceId == id
+        && getAfter(event).data.delta == -data.pointsCost
+        && rewardsBalanceChanged('redeem_' + id, -data.pointsCost);
+    }
+    match /rewardVouchers/{id} {
+      allow get: if signedIn() && (!exists(/databases/$(database)/documents/rewardVouchers/$(id))
+        || resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow list: if signedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if rewardsOwner(request.resource.data.ownerUid) && validNewRewardVoucher(id, request.resource.data);
+      allow update: if rewardsOwner(resource.data.ownerUid)
+        && resource.data.status == 'available' && request.time < resource.data.expiresAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','usedAt','usedBy'])
+        && request.resource.data.status == 'used' && request.resource.data.usedAt == request.time
+        && request.resource.data.usedBy == request.auth.uid;
+    }
+
+    // Member A module 4: visitor support and administrator case handling.
+    function supportOwner(uid) { return verifiedVisitor() && request.auth.uid == uid && activeVisitor(uid); }
+    function supportCategory(value) {
+      return value in ['App Experience','Tickets & Admission','Payments & Billing','Rides & Attractions',
+        'Food & Beverage','Photo Services','Accessibility','Guest Services','Compliments'];
+    }
+    function supportFileMetadata(file) {
+      return file is map && file.keys().hasOnly(['name','mime','size','sha256'])
+        && file.name is string && file.name.size() >= 1 && file.name.size() <= 100
+        && file.mime in ['image/jpeg','image/png','application/pdf']
+        && file.size is int && file.size >= 1 && file.size <= 512000
+        && file.sha256 is string && file.sha256.matches('^[a-f0-9]{64}$');
+    }
+    function supportFileIssued(id, owner, file) {
+      let path = /databases/$(database)/documents/supportAttachments/$(id);
+      let attachment = getAfter(path).data;
+      return !exists(path) && attachment.ownerUid == owner && attachment.caseId == id
+        && file == {'name':attachment.name,'mime':attachment.mime,'size':attachment.size,'sha256':attachment.sha256};
+    }
+    function supportNewCase(id, data) {
+      return id.matches('^[a-f0-9]{48}$')
+        && data.keys().hasOnly(['ownerUid','ownerName','type','category','subject','message','orderId','contactConsent','contactEmail',
+          'fingerprint','attachment','status','priority','assigneeUid','assigneeName','createdAt','updatedAt','firstResponseAt',
+          'resolvedAt','resolution','messageCount','lastMessageId','lastEventId'])
+        && data.ownerUid == request.auth.uid && data.ownerName == get(/databases/$(database)/documents/visitors/$(request.auth.uid)).data.fullName
+        && data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 100
+        && data.type in ['feedback','problem','complaint'] && supportCategory(data.category)
+        && data.subject is string && data.subject.size() >= 3 && data.subject.size() <= 100
+        && data.message is string && data.message.size() >= 10 && data.message.size() <= 500
+        && data.orderId is string && (data.orderId == '' || (data.orderId.matches('^[a-f0-9]{48}$')
+          && get(/databases/$(database)/documents/orders/$(data.orderId)).data.ownerUid == request.auth.uid))
+        && data.contactConsent is bool && data.contactEmail == (data.contactConsent ? request.auth.token.email : '')
+        && data.fingerprint is string && data.fingerprint.matches('^[a-f0-9]{64}$')
+        && (data.attachment == null || (supportFileMetadata(data.attachment) && supportFileIssued(id, data.ownerUid, data.attachment)))
+        && data.status == 'new' && data.priority == 'medium' && data.assigneeUid == '' && data.assigneeName == ''
+        && data.createdAt == request.time && data.updatedAt == request.time
+        && data.firstResponseAt == null && data.resolvedAt == null && data.resolution == ''
+        && data.messageCount == 0 && data.lastMessageId == '' && data.lastEventId == '';
+    }
+    function supportReplyUpdate(id, data) {
+      let path = /databases/$(database)/documents/supportMessages/$(data.lastMessageId);
+      let message = getAfter(path).data;
+      return data.diff(resource.data).affectedKeys().hasOnly(['updatedAt','messageCount','lastMessageId','status','firstResponseAt'])
+        && resource.data.status != 'resolved' && data.updatedAt == request.time
+        && data.messageCount == resource.data.messageCount + 1 && !exists(path)
+        && message.caseId == id && message.ownerUid == resource.data.ownerUid && message.authorUid == request.auth.uid
+        && (message.role == 'admin' ? (isAdmin() && data.status == 'in_progress'
+          && data.firstResponseAt == (resource.data.firstResponseAt == null ? request.time : resource.data.firstResponseAt))
+          : (supportOwner(resource.data.ownerUid) && data.status == resource.data.status && data.firstResponseAt == resource.data.firstResponseAt));
+    }
+    function supportEventCoupled(id, data) {
+      let event = getAfter(/databases/$(database)/documents/supportEvents/$(data.lastEventId)).data;
+      return !exists(/databases/$(database)/documents/supportEvents/$(data.lastEventId))
+        && event.caseId == id && event.ownerUid == resource.data.ownerUid && event.actorUid == request.auth.uid
+        && event.fromStatus == resource.data.status && event.toStatus == data.status
+        && data.updatedAt == request.time;
+    }
+    function supportAdminUpdate(id, data) {
+      return isAdmin() && data.diff(resource.data).affectedKeys().hasOnly(['status','priority','category','assigneeUid',
+          'assigneeName','resolution','resolvedAt','updatedAt','lastEventId'])
+        && data.status in ['new','in_progress','resolved'] && data.priority in ['low','medium','high'] && supportCategory(data.category)
+        && data.assigneeUid is string && data.assigneeName is string && data.assigneeName.size() <= 100
+        && ((data.assigneeUid == '' && data.assigneeName == '') || data.assigneeUid == request.auth.uid
+          || (data.assigneeUid == resource.data.assigneeUid && data.assigneeName == resource.data.assigneeName))
+        && data.resolution is string && (data.status == 'resolved'
+          ? (data.resolution.size() >= 5 && data.resolution.size() <= 500
+            && data.resolvedAt == (resource.data.status == 'resolved' ? resource.data.resolvedAt : request.time))
+          : (data.resolution == '' && data.resolvedAt == null))
+        && supportEventCoupled(id, data);
+    }
+    function supportVisitorReopen(id, data) {
+      return supportOwner(resource.data.ownerUid) && resource.data.status == 'resolved' && data.status == 'in_progress'
+        && data.diff(resource.data).affectedKeys().hasOnly(['status','resolution','resolvedAt','updatedAt','lastEventId'])
+        && data.resolution == '' && data.resolvedAt == null && supportEventCoupled(id, data);
+    }
+    match /supportCases/{id} {
+      allow get: if signedIn() && (!exists(/databases/$(database)/documents/supportCases/$(id))
+        || resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow list: if signedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if supportOwner(request.resource.data.ownerUid) && supportNewCase(id, request.resource.data);
+      allow update: if signedIn() && (supportReplyUpdate(id, request.resource.data)
+        || supportAdminUpdate(id, request.resource.data) || supportVisitorReopen(id, request.resource.data));
+    }
+    match /supportAttachments/{id} {
+      allow get: if signedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if supportOwner(request.resource.data.ownerUid)
+        && request.resource.data.keys().hasOnly(['ownerUid','caseId','name','mime','size','sha256','base64','createdAt'])
+        && request.resource.data.caseId == id && request.resource.data.createdAt == request.time
+        && supportFileMetadata({'name':request.resource.data.name,'mime':request.resource.data.mime,'size':request.resource.data.size,'sha256':request.resource.data.sha256})
+        && request.resource.data.base64 is string && request.resource.data.base64.size() == int((request.resource.data.size + 2) / 3) * 4
+        && (request.resource.data.mime == 'application/pdf' ? request.resource.data.base64.matches('^JVBERi0.*')
+          : request.resource.data.mime == 'image/png' ? request.resource.data.base64.matches('^iVBORw0KGgo.*') : request.resource.data.base64.matches('^/9j/.*'))
+        && !exists(/databases/$(database)/documents/supportCases/$(id))
+        && getAfter(/databases/$(database)/documents/supportCases/$(id)).data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/supportCases/$(id)).data.attachment
+          == {'name':request.resource.data.name,'mime':request.resource.data.mime,'size':request.resource.data.size,'sha256':request.resource.data.sha256};
+    }
+    function supportNewMessage(id, data, internal) {
+      let casePath = /databases/$(database)/documents/supportCases/$(data.caseId);
+      let record = get(casePath).data;
+      return data.keys().hasOnly(['ownerUid','caseId','authorUid','authorName','role','body','createdAt'])
+        && data.caseId is string && data.caseId.matches('^[a-f0-9]{48}$') && id.matches('^' + data.caseId + '_[a-f0-9]{48}$')
+        && data.ownerUid == record.ownerUid && data.authorUid == request.auth.uid
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100
+        && data.body is string && data.body.size() >= 2 && data.body.size() <= 2000 && data.createdAt == request.time
+        && (data.role == 'admin' ? isAdmin() : (!internal && data.role == 'visitor' && supportOwner(record.ownerUid)
+          && data.authorName == get(/databases/$(database)/documents/visitors/$(request.auth.uid)).data.fullName))
+        && (internal ? isAdmin() : (record.status != 'resolved' && getAfter(casePath).data.lastMessageId == id
+          && getAfter(casePath).data.messageCount == record.messageCount + 1 && getAfter(casePath).data.updatedAt == request.time));
+    }
+    match /supportMessages/{id} {
+      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow get: if verifiedVisitor() && !exists(/databases/$(database)/documents/supportMessages/$(id));
+      allow create: if signedIn() && supportNewMessage(id, request.resource.data, false);
+    }
+    match /supportNotes/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && supportNewMessage(id, request.resource.data, true) && request.resource.data.role == 'admin';
+    }
+    match /supportEvents/{id} {
+      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['caseId','ownerUid','actorUid','actorName','action','fromStatus','toStatus','createdAt'])
+        && request.resource.data.caseId is string && request.resource.data.caseId.matches('^[a-f0-9]{48}$')
+        && id.matches('^' + request.resource.data.caseId + '_[a-f0-9]{48}$')
+        && request.resource.data.actorUid == request.auth.uid && request.resource.data.actorName is string
+        && request.resource.data.actorName.size() >= 1 && request.resource.data.actorName.size() <= 100
+        && request.resource.data.createdAt == request.time
+        && get(/databases/$(database)/documents/supportCases/$(request.resource.data.caseId)).data.ownerUid == request.resource.data.ownerUid
+        && get(/databases/$(database)/documents/supportCases/$(request.resource.data.caseId)).data.lastEventId != id
+        && get(/databases/$(database)/documents/supportCases/$(request.resource.data.caseId)).data.status == request.resource.data.fromStatus
+        && getAfter(/databases/$(database)/documents/supportCases/$(request.resource.data.caseId)).data.lastEventId == id
+        && getAfter(/databases/$(database)/documents/supportCases/$(request.resource.data.caseId)).data.status == request.resource.data.toStatus
+        && request.resource.data.action == (request.resource.data.fromStatus != request.resource.data.toStatus && request.resource.data.toStatus == 'resolved'
+          ? 'resolved' : request.resource.data.fromStatus == 'resolved' && request.resource.data.toStatus != 'resolved' ? 'reopened' : 'updated')
+        && (isAdmin() || (supportOwner(request.resource.data.ownerUid) && request.resource.data.action == 'reopened'
+          && request.resource.data.fromStatus == 'resolved' && request.resource.data.toStatus == 'in_progress'));
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

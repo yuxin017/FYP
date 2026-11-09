@@ -1,1 +1,46 @@
-{"functions":[{"codebase":"default","source":"functions"},{"source":"moderation","codebase":"moderation","disallowLegacyRuntimeConfig":true,"ignore":["node_modules",".git","firebase-debug.log","firebase-debug.*.log","*.local"],"predeploy":["npm --prefix \"$RESOURCE_DIR\" run lint"]}],"flutter":{"platforms":{"android":{"default":{"projectId":"ecotravel-5ad49","appId":"1:928647860235:android:9f1df2dbb22997f367770e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"themeparksmartmanagement","configurations":{"web":"1:374786580183:web:da84c18830fbc3d7569a92"}}}}}}
+{
+  "functions": [
+    {
+      "codebase": "default",
+      "source": "functions"
+    },
+    {
+      "source": "moderation",
+      "codebase": "moderation",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ],
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "themeparksmartmanagement",
+          "appId": "1:374786580183:android:94e6d44078057404569a92",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "themeparksmartmanagement",
+          "configurations": {
+            "android": "1:374786580183:android:94e6d44078057404569a92",
+            "web": "1:374786580183:web:da84c18830fbc3d7569a92"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

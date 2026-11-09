@@ -763,3 +763,5 @@ It should look like part of one consistent challenge badge collection.
       }
     },
 );
+// Shared reservation domain handlers are also used by the authenticated Node API.
+Object.assign(exports, require('./src/reservations').reservationExports(require('firebase-admin')));

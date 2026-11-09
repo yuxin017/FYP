@@ -1,0 +1,13 @@
+{
+  "ACCOUNT_SERVICE_URL": "http://127.0.0.1:8787",
+  "MAPBOX_PUBLIC_TOKEN": "",
+  "MAPBOX_STYLE": "mapbox/streets-v12",
+  "PARK_NORTH": "",
+  "PARK_SOUTH": "",
+  "PARK_EAST": "",
+  "PARK_WEST": "",
+  "SITUM_API_KEY": "",
+  "SITUM_BUILDING_ID": "",
+  "SITUM_PROFILE": "",
+  "SITUM_POI_MAP": "{}"
+}

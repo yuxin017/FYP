@@ -1,0 +1,69 @@
+MEMBER A - MODULE 4: HELP, GUIDES AND VISITOR SUPPORT
+Completed 7 November 2026
+
+OPEN
+Run .\tool\run-app.cmd from C:\Users\seowy\Documents\Codex\FYP.
+Keep its terminal open, then open http://localhost:5173 and refresh once.
+Visitor: Profile > Help & Support.
+Administrator: http://localhost:5173/#/admin > Feedback & Complaints.
+Use your existing visitor/admin accounts; administrator access still requires
+the existing Firebase Auth admin:true claim.
+
+WHAT IS COMPLETE
+Help search, tutorials and user guides, guide details with step illustrations,
+Previous/Next navigation, searchable/category-filtered FAQ, Feedback/Problem/
+Complaint forms, optional attachment and related booking, confirmation and
+My Requests, public conversations, status/history, resolution and reopening.
+The administrator inbox includes statistics, filters, pagination, case details,
+assignment, priority/category/status, private notes, response templates, public
+replies, resolution summaries and an audit timeline.
+
+Figma: row 3, Help & Support (89:121), Tutorials (93:202 and 93:206), FAQ
+(94:214), Feedback (89:115); admin Feedback & Complaints (136:572).
+Original artwork, colours, cards and separate screens are retained. My Requests,
+confirmation and conversation/reopening complete the flow where Figma stops.
+
+TRY THESE IN ORDER
+1. Profile > Help & Support. Search for tickets or points. Open Tutorials &
+   User Guides, change categories and open a guide. Try Previous/Next and the
+   FAQ links. Open FAQ, search for a phrase, change category and expand answers.
+
+2. Open Submit Feedback, Report a Problem and Submit a Complaint. Each opens
+   the appropriate tab. Try submitting an empty form: field validation appears.
+   Enter your own subject and message, select a category and optionally attach
+   a JPG, PNG or PDF. Attachments are limited to 500 KB; larger photos are resized.
+   For Tickets & Admission or Payments & Billing, an owned booking is optional.
+
+3. Send one request you want to keep. The contact checkbox is optional; it
+   shares your account email with support when selected. In-app replies work
+   either way. Confirmation shows a saved reference and opens View Request.
+   Refresh, return to My Requests and check that the request remains saved.
+   If a connection is interrupted, Retry Submission reuses the same reference.
+   A pending submission also restores when the form is reopened.
+
+4. Open the administrator portal > Feedback & Complaints. Your request should
+   appear. Try the search and filters, then open its case panel. Review the
+   attachment or related booking if supplied. Assign it to yourself, change
+   priority/category/status and Save Changes. Changes appear in the timeline.
+
+5. Add an Internal Note. Switch back to the visitor: that note must not appear.
+   In the admin Details tab, choose a response template, edit it and Send Reply.
+   The template fills the composer; choosing one alone does not send a message.
+   The visitor should see the actual reply and be able to send a follow-up.
+
+6. As admin, resolve the case with a resolution summary. The visitor sees the
+   summary and Resolved status. As visitor, choose Reopen Request, then send a
+   follow-up. History stays visible and the case returns to In Progress.
+
+CONTACT AND DATA
+Requests, attachments, conversations and case events use the existing Firebase
+project themeparksmartmanagement. Internal notes are restricted to administrators.
+There is no automatic email sending or bank/card refund action in this module.
+Guides describe the application's supported email sign-in and completed features.
+
+VERIFIED
+30 Flutter checks across Modules 1-4 and 33 isolated backend checks pass.
+Scoped Dart analysis reports no issues. The release web build is verified.
+Support rules were deployed and verified with the existing shared rules retained.
+No fixture account, support case or staff reply was added to the shared project.
+No GitHub push/merge or billing change. Other modules wait for your instruction.

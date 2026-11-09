@@ -1,11 +1,9 @@
-
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'auth/login_page.dart';
-import 'visitor_home_page.dart';
 import 'auth/auth_gate.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -26,26 +24,27 @@ class _SplashScreenState extends State<SplashScreen> {
     // Display splash screen for 2 seconds
     await Future.delayed(const Duration(seconds: 2));
 
+    // An initial deep link can place another route above the splash screen.
+    // Only the visible splash route should perform the startup redirect.
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+
     // Wait for Firebase to restore the login session
     User? user;
 
     try {
-      user = await FirebaseAuth.instance
-          .authStateChanges()
-          .first
-          .timeout(const Duration(seconds: 10));
+      user = await FirebaseAuth.instance.authStateChanges().first.timeout(
+        const Duration(seconds: 10),
+      );
     } catch (_) {
       // If session checking fails, show login page
       user = null;
     }
 
-    if (!mounted) return;
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => user == null
-            ? const LoginPage()
-            : const AuthGate(),
+        builder: (_) => user == null ? const LoginPage() : const AuthGate(),
       ),
     );
   }
@@ -57,10 +56,7 @@ class _SplashScreenState extends State<SplashScreen> {
         fit: StackFit.expand,
         children: [
           // Full-screen background
-          Image.asset(
-            'assets/images/Background.png',
-            fit: BoxFit.cover,
-          ),
+          Image.asset('assets/images/Background.png', fit: BoxFit.cover),
 
           // Main logo
           Center(

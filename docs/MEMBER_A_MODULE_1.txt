@@ -1,0 +1,74 @@
+MEMBER A - MODULE 1: TICKETS AND BOOKING
+
+APP: http://localhost:5173
+Refresh the page to load the latest build. Use your existing account.
+Firebase project: themeparksmartmanagement.
+
+WHAT IS INCLUDED
+Tickets hub, original Figma artwork, Day/Annual Pass catalog, pass details,
+adult/child quantities, date selection, editable cart, guest details, review,
+actual loyalty balance, payment selection, confirmation, digital QR tickets,
+Upcoming/Used/Expired filters, in-app wallet, ticket scan/ID lookup, purchase
+history and downloadable PDF receipts. Home/Profile ticket shortcuts are linked.
+Tap Tickets in the bottom bar to return to the ticket hub.
+
+FIGMA REFERENCES
+Row 3: My Tickets 87:64; Ticket Details 82:45; Purchase History 87:105.
+Row 5: hub 106:307; catalog 106:308; pass details 106:309;
+guests 106:310 / 112:15; cart 115:48; review 106:311;
+payment 106:312; confirmation 106:313; digital ticket 112:8.
+Original artwork was extracted from your downloaded FYP.fig.
+Names, dates, balances and ticket counts come from the current account/data.
+
+TRY THIS BOOKING
+1. Open Tickets > Buy Tickets > choose 1-Day Pass.
+2. Choose a visit date. Set Adult=1, Child=1: total RM250.
+   Adult=2, Child=0 should total RM280. Up to 10 guests per order.
+3. Add to Cart. Try Edit, change counts, and remove a pass.
+   Add another pass if desired; its date and guest counts stay separate.
+4. Checkout. Enter each guest's name and email. Try Assign this ticket to me.
+   Continue stays disabled until every guest has valid details.
+5. Review Order. Check dates, fares and total. A zero points balance correctly
+   disables points redemption. Review the ticket terms and tick the agreement.
+6. Proceed to Payment. Choose a method and press Pay once.
+   You do not need to enter real card/bank details. As agreed, this confirms
+   and saves the booking without making a bank/card charge.
+7. Expect Payment Successful. Open View Digital Tickets: one distinct QR per
+   guest. Download Receipt and check its booking reference, dates and total.
+8. Open My Tickets and Purchase History. Refresh/sign in again: confirmed
+   tickets and the order remain. Add to Wallet saves an in-app bookmark.
+9. Try Scan & Add. Enter your ticket ID, or allow the camera and scan its QR.
+   A ticket must belong to you or be assigned to your verified account email.
+   Random, expired, used or another account's ticket should not be accepted.
+10. Leave a cart unfinished, refresh, and confirm it restores for your account.
+    If a connection fails during Pay, Retry checkout reuses the same booking
+    reference. Review/change first checks Firebase for an existing confirmation.
+
+CURRENT DEVICE BEHAVIOUR
+- Chrome/web is the checked target. Camera scanning requires camera permission
+  and an available camera. Manual ticket ID lookup is also available.
+- NFC has a QR fallback on this device. Add to Wallet is the in-app wallet,
+  not an Apple/Google Wallet pass. Browser screen brightness is controlled
+  through your device's display controls; the app offers a brighter QR view.
+- Souvenir cards show gift-shop information; merchandise checkout and gate
+  ticket redemption are outside this ticket-booking module.
+
+SHARED FIREBASE
+The checked booking rules were deployed. Existing visitor and admin ticket-type
+rules were preserved. Five pass options are available. Existing visitor records,
+orders and admin ticket types were not overwritten. The billing plan is unchanged.
+New bookings use atomic transactions with database-enforced fares, guest counts,
+points deductions and ticket ownership. Existing earlier ticket records still load.
+
+RESTART LATER
+From C:\Users\seowy\Documents\Codex\FYP:
+  .\tool\run-app.cmd
+Stop an existing server on port 5173 before starting a second one.
+
+TEAM HANDOVER
+Keep pubspec.yaml and pubspec.lock together when integrating Member B's code.
+New pinned packages: qr_flutter 4.1.0, mobile_scanner 7.1.3, crypto 3.0.7.
+Flutter 3.41.0 / Dart 3.11.0; Node 22.23.4 / npm 10.9.9;
+Firebase CLI 15.35.0; FlutterFire CLI 1.4.1.
+Do not replace firebase_options.dart or the shared Firestore rules with an older copy.
+No GitHub commit, push or merge was made. This handover covers Module 1 only.

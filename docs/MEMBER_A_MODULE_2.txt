@@ -1,0 +1,80 @@
+MEMBER A - MODULE 2: ADMIN WEB PORTAL
+
+OPEN
+http://localhost:5173/#/admin
+Use an existing verified administrator account. Enter its password only in the app.
+Your visitor sign-in at http://localhost:5173 stays separate.
+Both use the existing themeparksmartmanagement Firebase project.
+
+READY TO TRY
+1. Sign in to Admin Portal. A normal visitor account must not get admin access.
+   The Figma reference is the desktop Admin Portal frame 128:529.
+
+2. Visitors: search by name/email/phone/visitor ID; try status, membership, risk
+   and joined-date filters. Click Visitor/Membership/Last Activity headings to
+   sort. Select rows and try pagination or Export CSV.
+   Figma reference: Visitor Accounts, frame 135:551.
+
+3. Open a visitor. Check the overview, loyalty balance, current tickets,
+   activity, payments and access details. Edit the name/phone/membership/risk
+   tag, or save an admin note. Reopen/refresh to check that it persists.
+   Admin notes are private to administrators. Figma profile frame: 135:552.
+
+4. Pass Packages: add or edit a pass. Adult and child fares use exact RM/sen
+   amounts. Set its category, validity days, display order and availability.
+   Open the visitor catalog in the other tab: the change should appear live.
+   Inactive passes disappear from new-booking choices. Existing bookings keep
+   their original price/date. Restore any fare/availability you change while
+   checking. A cart with an old fare may need that pass removed and re-added.
+
+5. Tickets & Orders: inspect actual booking records, individual tickets and
+   receipts. Search a booking/ticket/guest, switch tabs, filter ticket status,
+   open a QR and download a receipt or CSV.
+
+6. Ticket Validation: scan a ticket QR or paste its readable ticket ID/full QR
+   value. First check the guest, dates and status. Press Admit Visitor once.
+   A current valid ticket should confirm admission; a second scan must not
+   admit it twice. Future, expired, used or cancelled tickets must be rejected.
+   Single-day tickets move to Used. Multi-day/annual passes allow one admission
+   per valid day, retaining their remaining validity. The visitor's ticket view
+   updates from Firebase. Camera scanning needs an available camera/permission;
+   manual entry also works.
+
+7. Account actions: suspend a visitor, then check that their visitor app shows
+   the access notice. Activate them to restore access. Remove archives the
+   account without deleting its profile/bookings; restore it through the
+   Archived status filter. You cannot restrict your own administrator account.
+   These actions restrict visitor-app access and new bookings; they do not
+   delete the Firebase Auth account or cancel previously issued tickets.
+
+8. Activity Monitoring: check real visitor sessions, admin actions and successful
+   park admissions. Try the activity filter, Live updates switch and CSV export.
+   Dashboard counts use the current data. Watchlist/risk tags are admin-managed;
+   they are not an automated risk-detection result.
+
+DESIGN
+Original Figma artwork is reused. Visitor list/profile follow the original
+rose sidebar, header, stat cards, filters, tables and detail layout. Package,
+ticket and validation screens extend that style where the design has gaps.
+Desktop is the main target; smaller windows use a drawer and scrollable tables.
+This module does not add the separate administrator-role, automated-risk,
+complaint-handling or report-generation workflows.
+
+VERIFICATION
+15 Flutter tests passed, including admin deep-link startup, search/sort/profile
+navigation, exact package fares, QR confirmation, duplicate taps, compact layout
+and all Module 1 regressions. 18 isolated backend tests passed, covering trusted
+admin access, private notes, suspension enforcement, package validation, immutable
+audit records, duplicate-scan races, multi-day validity and existing checkout.
+
+The normal app remains connected to shared Firebase. Existing visitors, bookings,
+administrator claims, ticket_types and attraction data were not replaced for QA.
+The tested rules were deployed and checked against the active Firebase release.
+No GitHub commit/push/merge or Firebase billing change was made.
+
+RESTART
+From C:\Users\seowy\Documents\Codex\FYP:
+  .\tool\run-app.cmd
+Stop an existing server on port 5173 before starting a second one.
+
+This handover completes Module 2 only. Check it before starting another module.

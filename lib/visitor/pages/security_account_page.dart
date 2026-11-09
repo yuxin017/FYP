@@ -1,45 +1,144 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../accounts/account_repository.dart';
+import '../../accounts/account_widgets.dart';
+import '../../accounts/security_pages.dart';
+import '../widgets/rewards_widgets.dart';
+import 'face_recognition_settings_page.dart';
+import '../../device/biometric_security.dart';
+import '../../auth/phone_auth_page.dart';
 
 class SecurityAccountPage extends StatefulWidget {
-  const SecurityAccountPage({super.key});
+  final AccountRepository? repository;
+  const SecurityAccountPage({super.key, this.repository});
   @override
   State<SecurityAccountPage> createState() => _SecurityAccountPageState();
 }
 
 class _SecurityAccountPageState extends State<SecurityAccountPage> {
-  static const rose = Color(0xFFAD7472);
+  late final repo = widget.repository ?? FirebaseAccountRepository();
   bool busy = false;
-  Future<void> resetPassword() async {
-    final email = FirebaseAuth.instance.currentUser?.email;
-    if (email == null) return;
+  String? error;
+  void open(Widget page) =>
+      Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  Future<void> logout() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('You can sign in again anytime.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
     setState(() => busy = true);
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password reset email requested. Check your inbox and spam folder.')));
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to send email: ${e.code}')));
-    } finally { if (mounted) setState(() => busy = false); }
+      await repo.signOut();
+      if (mounted) Navigator.popUntil(context, (r) => r.isFirst);
+    } catch (e) {
+      if (mounted) setState(() => error = accountError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
+
   @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF4EF),
-      appBar: AppBar(title: const Text('Security & Account'), backgroundColor: const Color(0xFFFDF4EF)),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
-        Card(child: ListTile(leading: const Icon(Icons.verified_user_outlined, color: rose), title: const Text('Email verification'), subtitle: Text(user?.emailVerified == true ? 'Verified' : 'Not verified'))),
-        Card(child: ListTile(leading: const Icon(Icons.lock_reset, color: rose), title: const Text('Reset password'), subtitle: const Text('Send a secure password reset link to your email'), trailing: busy ? const CircularProgressIndicator() : const Icon(Icons.chevron_right), onTap: busy ? null : resetPassword)),
-        Card(child: ListTile(leading: const Icon(Icons.logout, color: rose), title: const Text('Log out'), onTap: () async {
-          final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Log out?'), content: const Text('You can sign in again anytime.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Log out'))]));
-          if (confirm != true) return;
-          await FirebaseAuth.instance.signOut();
-          if (context.mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-        })),
-        const Padding(padding: EdgeInsets.all(12), child: Text('Changing email and permanently deleting an account require a separate verified account-management flow. These actions are not enabled here.', style: TextStyle(color: Colors.grey))),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => AccountScaffold(
+    title: 'Security & Account',
+    busy: busy,
+    child: ListView(
+      primary: false,
+      padding: const EdgeInsets.fromLTRB(22, 43, 22, 24),
+      children: [
+        RewardCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              accountHeading('Security'),
+              AccountRow(
+                icon: Icons.lock_outline,
+                title: 'Reset Password',
+                subtitle: 'Change your account password',
+                onTap: () => open(ChangePasswordPage(repository: repo)),
+              ),
+              const Divider(height: 1, color: rewardBorder),
+              AccountRow(
+                icon: Icons.phone_android_outlined,
+                title: 'Linked Phone Number',
+                subtitle: 'Verify a number for SMS sign-in',
+                onTap: () => open(const PhoneAuthPage(link: true)),
+              ),
+              const Divider(height: 1, color: rewardBorder),
+              AccountRow(
+                icon: Icons.fingerprint,
+                title: 'Device Authentication',
+                subtitle: 'Face ID, fingerprint and device unlock',
+                onTap: () => open(const DeviceSecurityPage()),
+              ),
+              const Divider(height: 1, color: rewardBorder),
+              AccountRow(
+                icon: Icons.shield_outlined,
+                title: 'Login & Security',
+                subtitle: 'Manage signed-in devices',
+                onTap: () => open(LoginSecurityPage(repository: repo)),
+              ),
+              const Divider(height: 1, color: rewardBorder),
+              AccountRow(
+                icon: Icons.face_retouching_natural,
+                title: 'Face Recognition',
+                subtitle: 'Optional photo-matching profile',
+                onTap: () => open(const FaceRecognitionSettingsPage()),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        RewardCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              accountHeading('Account Actions'),
+              RewardButton(
+                'Log Out',
+                outlined: true,
+                onPressed: busy ? null : logout,
+              ),
+              const SizedBox(height: 14),
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => open(DeleteAccountPage(repository: repo)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red.shade700,
+                  side: BorderSide(color: Colors.red.shade700),
+                  minimumSize: const Size.fromHeight(55),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text(
+                  'Delete Account',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(height: 10),
+              accountDescription(
+                'Permanently removes your profile and personal data.',
+              ),
+            ],
+          ),
+        ),
+        accountFailure(error),
+      ],
+    ),
+  );
 }

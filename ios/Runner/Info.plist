@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Collaborative Asg</string>
+	<string>ThemePark</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -46,10 +46,20 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>EcoTravel uses the camera to recognise cultural and heritage attractions.</string>
+    <string>Theme Park uses the camera to scan entrance passes, match park photos and recognise nearby landmarks.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>EcoTravel uses your photo library to recognise cultural and heritage attractions.</string>
+    <string>Theme Park uses selected photos for profile pictures, park photo matching and landmark recognition.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>EcoTravel uses your location to find nearby heritage attractions.</string>
+    <string>Theme Park uses your location for park navigation and optional group location sharing.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Unlock your Theme Park account using Face ID on this device.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Ask the Park Assistant a question using your voice.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Theme Park uses location while you navigate the park.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>Phone motion sensors improve your location while navigating the park.</string>
+    <key>WKAppBoundDomains</key>
+    <array><string>map-viewer.situm.com</string></array>
 </dict>
 </plist>

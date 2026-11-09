@@ -1,51 +1,26 @@
 {
   "project_info": {
-    "project_number": "928647860235",
-    "project_id": "ecotravel-5ad49",
-    "storage_bucket": "ecotravel-5ad49.firebasestorage.app"
+    "project_number": "374786580183",
+    "project_id": "themeparksmartmanagement",
+    "storage_bucket": "themeparksmartmanagement.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:928647860235:android:9f1df2dbb22997f367770e",
+        "mobilesdk_app_id": "1:374786580183:android:94e6d44078057404569a92",
         "android_client_info": {
           "package_name": "my.edu.tarumt.collaborative_asg"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "928647860235-sd3pkp19io9865glp7in5akbm36cnhl0.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "my.edu.tarumt.collaborative_asg",
-            "certificate_hash": "37d6f65bdc6f022e223035d8b016e64ca408adfe"
-          }
-        },
-        {
-          "client_id": "928647860235-h931p12434rm01git24bq75teel8vitt.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAVMEF5aBxakdM4se8BOGslo2NDaQ-3b_4"
+          "current_key": "AIzaSyC_ZJgbwoAJlSRHkmYcNQJ0_BYJrgyrzkw"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "928647860235-h931p12434rm01git24bq75teel8vitt.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "928647860235-ad23saf686pplohuen2goq1ib20kd98s.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "my.edu.tarumt.collaborativeAsg"
-              }
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

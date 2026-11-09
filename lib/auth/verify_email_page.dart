@@ -1,144 +1,140 @@
-
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'auth_gate.dart';
-import 'login_page.dart';
+import '../accounts/account_widgets.dart';
+import '../accounts/account_repository.dart' show accountError;
+import '../visitor/widgets/rewards_widgets.dart';
 
 class VerifyEmailPage extends StatefulWidget {
   const VerifyEmailPage({super.key});
-
   @override
   State<VerifyEmailPage> createState() => _VerifyEmailPageState();
 }
 
 class _VerifyEmailPageState extends State<VerifyEmailPage> {
-  bool _loading = false;
-  bool _sending = false;
+  bool busy = false;
+  String? message;
+  int cooldown = 0;
+  Timer? timer;
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
 
-  Future<void> _checkVerification() async {
-    setState(() => _loading = true);
-
+  Future<void> check() async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      message = null;
+    });
     try {
       await FirebaseAuth.instance.currentUser?.reload();
-
       final user = FirebaseAuth.instance.currentUser;
-
-      if (user != null && user.emailVerified) {
-        await FirebaseAuth.instance.signOut();
-
-        if (!mounted) return;
-
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-              (route) => false,
+      if (user?.emailVerified == true) {
+        await user!.getIdToken(true);
+      } else if (mounted) {
+        setState(
+          () => message =
+              'Email not verified yet. Open the link in your inbox, then return here.',
         );
-      } else {
-        _showMessage('Email not verified yet. Please check your inbox.');
       }
-    } on FirebaseAuthException catch (e) {
-      _showMessage(e.message ?? 'Unable to check verification status.');
+    } catch (e) {
+      if (mounted) setState(() => message = accountError(e));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => busy = false);
     }
   }
 
-  Future<void> _resendEmail() async {
-    setState(() => _sending = true);
-
+  Future<void> resend() async {
+    if (busy || cooldown > 0) return;
+    setState(() => busy = true);
     try {
-      final user = FirebaseAuth.instance.currentUser;
-
-      if (user == null) {
-        _showMessage('Session expired. Please log in again.');
-        return;
+      await FirebaseAuth.instance.currentUser?.sendEmailVerification();
+      if (mounted) {
+        setState(() {
+          message =
+              'Verification email sent. Check your inbox and spam folder.';
+          cooldown = 60;
+        });
+        timer?.cancel();
+        timer = Timer.periodic(const Duration(seconds: 1), (t) {
+          if (!mounted) {
+            t.cancel();
+            return;
+          }
+          setState(() => cooldown--);
+          if (cooldown <= 0) t.cancel();
+        });
       }
-
-      await user.sendEmailVerification();
-      _showMessage('Verification email sent. Please check your inbox.');
-    } on FirebaseAuthException catch (e) {
-      _showMessage(e.message ?? 'Unable to send verification email.');
+    } catch (e) {
+      if (mounted) setState(() => message = accountError(e));
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) setState(() => busy = false);
     }
-  }
-
-  Future<void> _backToLogin() async {
-    await FirebaseAuth.instance.signOut();
-
-    if (!mounted) return;
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-          (route) => false,
-    );
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   @override
-  Widget build(BuildContext context) {
-    final email = FirebaseAuth.instance.currentUser?.email ?? '';
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Email Verification')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+  Widget build(BuildContext context) => AccountScaffold(
+    title: 'Email Verification',
+    bottomNav: false,
+    busy: busy,
+    child: ListView(
+      primary: false,
+      padding: const EdgeInsets.fromLTRB(30, 30, 30, 24),
+      children: [
+        Image.asset('assets/images/Theme_Park_Main_Logo.png', height: 150),
+        const SizedBox(height: 36),
+        const Icon(
+          Icons.mark_email_unread_outlined,
+          color: rewardRose,
+          size: 70,
+        ),
+        const SizedBox(height: 25),
+        const Text(
+          'Verify Your Email',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 25,
+            fontWeight: FontWeight.w700,
+            color: rewardInk,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Open the verification link sent to\n${FirebaseAuth.instance.currentUser?.email ?? ''}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: rewardMuted, height: 1.6),
+        ),
+        const SizedBox(height: 25),
+        RewardCard(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.mark_email_unread_outlined,
-                size: 80,
-                color: Color(0xFFB77B83),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Verify Your Email',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'We have sent a verification link to:\n$email',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Open your email, click the verification link, '
-                    'then return here to continue.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _loading ? null : _checkVerification,
-                child: Text(
-                  _loading ? 'Checking...' : "I've Verified My Email",
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: _sending ? null : _resendEmail,
-                child: Text(
-                  _sending ? 'Sending...' : 'Resend Verification Email',
-                ),
-              ),
-              TextButton(
-                onPressed: _backToLogin,
-                child: const Text('Back to Login'),
+              accountHeading('Before you continue'),
+              accountDescription(
+                '1. Open your email inbox.\n2. Tap the verification link.\n3. Return here and confirm your email.',
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
+        accountFailure(message),
+        const SizedBox(height: 25),
+        RewardButton(
+          busy ? 'Checking…' : 'I Have Verified My Email',
+          onPressed: busy ? null : check,
+        ),
+        const SizedBox(height: 12),
+        RewardButton(
+          cooldown > 0 ? 'Resend in ${cooldown}s' : 'Resend Verification Email',
+          outlined: true,
+          onPressed: busy || cooldown > 0 ? null : resend,
+        ),
+        TextButton(
+          onPressed: busy ? null : FirebaseAuth.instance.signOut,
+          child: const Text('Back to Log In'),
+        ),
+      ],
+    ),
+  );
 }

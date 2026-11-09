@@ -1,0 +1,82 @@
+MEMBER A - MODULE 5: ACCOUNTS, PROFILE AND SECURITY
+7 November 2026
+
+OPEN
+From C:\Users\seowy\Documents\Codex\FYP, run .\tool\run-app.cmd.
+Keep the terminal open, then open http://localhost:5173 and refresh once.
+Open Profile > Profile Settings.
+
+The launcher starts the account service as well as the Flutter web application.
+The account service uses Node 22 and your existing Firebase CLI sign-in. Both
+connect to the existing themeparksmartmanagement project. No billing upgrade
+or Cloud Functions deployment is needed for Member A's account service.
+
+WHAT WAS LEFT AND IS NOW COMPLETE
+- Full Figma profile/settings, personal information and preferences screens.
+- Profile avatar selection/removal and validated personal details.
+- Nickname, optional height slider/input, food and park-interest preferences.
+- Verified email changes and Firebase profile-email synchronisation.
+- Signed-in password change, password recovery email/reset-link flow.
+- Email verification continuation and interrupted profile-setup recovery.
+- Remember me controls Firebase Local or Session persistence on web.
+- Signed-in device records and real sign-out-everywhere revocation.
+- Permanent account deletion with recent authentication and resumable cleanup.
+- Accessible privacy/terms information and unsaved-change confirmation.
+
+FIGMA REFERENCES
+Row 3: Profile Settings 90:150, Personal Information 90:157,
+Preferences & Interests 90:158, Security & Account 90:160, Delete Account 92:186.
+Row 1: Forgot Password 21:166 and Reset Password 24:189.
+Firebase uses email verification/reset links rather than invented SMS OTP codes.
+Separate screens, cards, illustrations, colours and bottom navigation are kept.
+
+TRY THESE
+1. Profile Settings: check your real name, avatar and completion percentage.
+   Personal Information: edit name/phone/date/gender, then Save Changes. Refresh
+   and verify persistence. Try an invalid phone number and Cancel in its editor.
+   Change or remove your avatar. Unsaved changes ask before you leave.
+
+2. Preferences & Interests: enter a nickname, adjust height with the slider or
+   number input, choose foods and interests, then Save Preferences. Reopen the
+   page to confirm. All food preferences is exclusive. Height may be cleared.
+   Your nickname appears in the Home greeting; full name remains on your profile.
+
+3. Personal Information > edit Email Address: enter the new address and current
+   password. Open the real verification link in the new inbox, return and press
+   I Have Verified My Email. Until verification succeeds, the old email remains.
+   Changing email affects how you next sign in. This action is optional to test.
+
+4. Security & Account > Reset Password: try mismatched confirmation, then change
+   the password if you want to. The current password is required. No passwords
+   were changed by the agent. Your existing credentials continue to work.
+
+5. From Log In > Forgot Password: request a reset email. Open its Firebase link,
+   or paste that link into the app's Check Your Email screen to enter a new
+   password in the application's reset form. Expired/used links are rejected.
+
+6. Log in from a second browser/window. Login & Security lists recorded devices
+   and last-active times; the current device is labelled. Sign Out All Devices
+   asks for your password and invalidates earlier sessions, including this one.
+   Reconnect the other window: it should return to sign-in. A new sign-in works.
+
+7. At login, Remember me checked persists across browser restarts. Unchecked
+   uses session persistence and ends when that browser session closes.
+
+8. Delete Account: inspect the full screen and choose Keep My Account on your
+   main account. Final deletion requires the checkbox, exact DELETE text and
+   current password. Only confirm on an account you intend to erase. Deletion
+   really removes owned tickets, rewards, support data and the Auth account.
+   An active attraction reservation must be cancelled first. Interrupted cleanup
+   can be resumed by reopening the app and confirming the password again.
+
+VERIFICATION
+40 Flutter checks and 48 backend checks pass across Member A's modules.
+Scoped Dart analysis has no issues. The release web build and actual browser
+navigation are checked. Password changes, email sending, account deletion and
+revocation were exercised with isolated fixtures rather than your live account.
+No fixture accounts were created in the shared project.
+
+The original Member A allocation is ready for Member B integration. Wider Figma
+features such as real face/photo matching, photo purchases/kiosk and native NFC
+are not represented as completed by this account module. The existing face
+setting records a consent preference; it is not an active recognition pipeline.

@@ -44,6 +44,22 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Local API keys - never commit the real file, only env.json
+# Private runtime configuration; committed examples live under config/.
 env.json
 apikey.txt
+
+# Per-PC runtime/configuration, private data, backups and check artifacts.
+.local/
+
+# Dependencies and machine-specific setup are restored by tool/setup.cmd.
+**/node_modules/
+.venv/
+.env
+.env.*
+service-account*.json
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+
+# Local review screenshots can contain the operator's account information.
+docs/integration/*.jpg
+docs/integration/*.png

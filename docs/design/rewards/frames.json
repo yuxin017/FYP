@@ -1,0 +1,31 @@
+[
+  {
+    "id": "63:1252",
+    "name": "Profile Page",
+    "file": "docs/design/rewards/profile-reference.png",
+    "width": 468,
+    "height": 1042,
+    "referenceFrom": "Left profile screen in the original 82:37 composite"
+  },
+  {
+    "id": "82:37",
+    "name": "Voucher Page ",
+    "file": "docs/design/rewards/82-37.png",
+    "width": 1471,
+    "height": 1069
+  },
+  {
+    "id": "82:38",
+    "name": "Voucher Detail Page ",
+    "file": "docs/design/rewards/82-38.png",
+    "width": 1471,
+    "height": 1069
+  },
+  {
+    "id": "87:84",
+    "name": "Loyalty Point Page ",
+    "file": "docs/design/rewards/87-84.png",
+    "width": 851,
+    "height": 1847
+  }
+]

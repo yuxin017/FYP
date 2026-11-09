@@ -1,0 +1,9 @@
+{
+  "name": "themepark-project-tools",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "firebase-tools": "15.35.0"
+  },
+  "engines": {"node": "22.23.4"}
+}

@@ -1,0 +1,26 @@
+MESSAGE FOR MEMBER B
+
+Member A's current Module 1 already issues real tickets in the shared Firebase
+project themeparksmartmanagement. It uses atomic Firestore transactions and
+security rules; ticket issuance does not depend on Cloud Functions deployment.
+
+Current records:
+- orders/{requestId}: status "completed"
+- tickets/{ticketId}: initial status "valid"
+- ownership fields: ownerUid, purchaserUid, guestEmail
+- linkage: orderId
+- validity: visitDate and validUntil (YYYY-MM-DD, Malaysia park dates)
+- QR: TP1:<ticket document ID>
+
+Please check your reservation eligibility code against these fields and values.
+Account for the intended ticket holder and single-/multi-day validity; admission
+can update ticket usage, so eligibility should not rely on a made-up "active" status.
+Your current separate copy may still show local placeholder tickets. Member A's
+latest work has not been pushed to GitHub; we will combine our modules here.
+
+Your Cloud Functions deployment is a separate step. Firebase requires Blaze to
+deploy Functions, but billing remains unchanged for now. Please identify the
+exact function names, region and expected ticket fields for the later integration.
+Do not replace ticket issuance or overwrite existing ticket/rewards/support rules.
+
+Reference: https://firebase.google.com/docs/functions/get-started

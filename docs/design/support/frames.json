@@ -1,0 +1,102 @@
+[
+  {
+    "id": "89:121",
+    "name": "Help & Support Page",
+    "file": "docs/design/support/89-121.png",
+    "sourceHash": "c4c542e31f08ef8ca8d850f6cc64abd87c89489d",
+    "width": 851,
+    "height": 1849,
+    "fillTransform": {
+      "m00": 1,
+      "m01": 0,
+      "m02": 0,
+      "m10": 0,
+      "m11": 1,
+      "m12": 0
+    },
+    "nodeSize": {
+      "x": 440,
+      "y": 956
+    }
+  },
+  {
+    "id": "93:202",
+    "name": "Tutorial 1",
+    "file": "docs/design/support/93-202.png",
+    "sourceHash": "631d8b16f257c803394ed66302994f4ba19666e3",
+    "width": 851,
+    "height": 1847,
+    "fillTransform": {
+      "m00": 1,
+      "m01": 0,
+      "m02": 0,
+      "m10": 0,
+      "m11": 1,
+      "m12": 0
+    },
+    "nodeSize": {
+      "x": 440,
+      "y": 955
+    }
+  },
+  {
+    "id": "93:206",
+    "name": "Tutorial 2",
+    "file": "docs/design/support/93-206.png",
+    "sourceHash": "a0bee154fb546b3729e387957531b974901848fe",
+    "width": 851,
+    "height": 1847,
+    "fillTransform": {
+      "m00": 1,
+      "m01": 0,
+      "m02": 0,
+      "m10": 0,
+      "m11": 1,
+      "m12": 0
+    },
+    "nodeSize": {
+      "x": 440,
+      "y": 955
+    }
+  },
+  {
+    "id": "94:214",
+    "name": "FAQ",
+    "file": "docs/design/support/94-214.png",
+    "sourceHash": "3ddecdcfaaf339b41416aaca6b889e3ab94ea716",
+    "width": 851,
+    "height": 1848,
+    "fillTransform": {
+      "m00": 1,
+      "m01": 0,
+      "m02": 0,
+      "m10": 0,
+      "m11": 1,
+      "m12": 0
+    },
+    "nodeSize": {
+      "x": 440,
+      "y": 955
+    }
+  },
+  {
+    "id": "89:115",
+    "name": "Feedback Page ",
+    "file": "docs/design/support/89-115.png",
+    "sourceHash": "484b877fab2e1e4566c6c886c49ae298f94ebef9",
+    "width": 851,
+    "height": 1849,
+    "fillTransform": {
+      "m00": 1,
+      "m01": 0,
+      "m02": 0,
+      "m10": 0,
+      "m11": 1,
+      "m12": 0
+    },
+    "nodeSize": {
+      "x": 440,
+      "y": 956
+    }
+  }
+]

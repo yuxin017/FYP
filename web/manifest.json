@@ -1,11 +1,11 @@
 {
-    "name": "collaborative_asg",
-    "short_name": "collaborative_asg",
+    "name": "Theme Park Smart Management System",
+    "short_name": "Theme Park",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FDF4EF",
+    "theme_color": "#AD7472",
+    "description": "Plan your visit, book tickets and explore the park.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

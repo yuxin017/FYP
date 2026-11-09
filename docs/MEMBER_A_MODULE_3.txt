@@ -1,0 +1,68 @@
+MEMBER A - MODULE 3: POINTS AND VOUCHERS
+Completed 7 November 2026
+
+OPEN AFTER RESTARTING
+From C:\Users\seowy\Documents\Codex\FYP in PowerShell:
+  .\tool\run-app.cmd
+Then open http://localhost:5173 and sign in with your existing visitor account.
+
+WHAT IS COMPLETE
+Profile points/voucher shortcuts, Points & History, reward membership progress,
+monthly totals and activity filters, redemption catalogue and reward details,
+My Vouchers with Available/Used/Expired filters, voucher details with real QR,
+terms/instructions, copyable codes and confirmed single-use redemption.
+
+Figma references: row 3, Profile (63:1252), Voucher Page (82:37), Voucher
+Details (82:38), Points & History (87:84). Original reward artwork is reused.
+Catalogue/review/confirmation states extend the same design where needed.
+
+TRY THESE IN ORDER
+1. Profile: open Points. Check your actual balance, reward membership progress,
+   monthly totals and All/Earned/Redeemed filters. Open the ? help button.
+   Names, points and dates are your Firebase data, not the values in Figma.
+
+2. If a completed purchase has uncollected points, press Collect Points.
+   Your existing RM140 purchase should offer 140 points if still uncollected.
+   Refresh and reopen: the points stay saved and the purchase cannot earn twice.
+   No visitor balances were manually filled for this module.
+
+3. Make a new ticket booking normally. Earn 1 point per full RM1 of the final
+   ticket total after any points discount. A RM140 purchase earns 140 points.
+   New purchases collect automatically. If that follow-up is interrupted,
+   Points & History offers the uncollected points without rebooking.
+
+4. At ticket Review Order, try the existing points discount: 100 points = RM1.
+   Check the discounted total and resulting balance. The earned points are
+   based on the discounted total; RM139 earns 139 points. Booking history and
+   QR tickets should still work normally.
+
+5. Open View Redemption Catalogue. Try All/Dining/Shopping/Photos. Review a
+   reward and expand its terms. Insufficient points disables redemption.
+   Current rewards cost 150, 200 and 300 points; earn enough before redeeming.
+   Confirm one reward: the exact cost is deducted once and one voucher appears.
+
+6. Profile > Vouchers: check the available count, open the new voucher and
+   inspect its QR, copy-code button, expiry, How to use and Terms & Conditions.
+   Refresh the app and reopen it: the voucher is still saved. Vouchers expire
+   at the end of their last valid day in Malaysia time, 30 days including issue day.
+
+7. Press Use Voucher, then Not Yet: it should remain Available. Press it again
+   and Confirm Use: it should move to Used, reduce the available count and
+   disable further use. Refresh and check again. Confirm Use consumes the voucher.
+   Dining/shopping/photo benefits are presented to staff at the relevant counter.
+   This module records the reward and its use; staff handle counter fulfilment.
+
+8. Return to Points & History. The redemption is listed, the monthly redeemed
+   total includes it, and Earned/Redeemed filters separate the activity.
+   Rewards membership uses lifetime earned points and does not drop when spent:
+   Normal below 500; Silver 500; Gold 1,500; Platinum 3,000.
+
+VERIFIED
+22 Flutter checks across the existing and rewards suites; 24 isolated backend
+checks including duplicate credits, simultaneous spending, forged amounts,
+expiry, single use, private queries and suspended accounts. Scoped analyzer
+and the web build pass. The normal app uses themeparksmartmanagement.
+
+No GitHub commit/push/merge or billing change. Member B's newer attraction and
+slot rules were retained. Only Module 3 was added; wait for your next instruction
+before starting another module.

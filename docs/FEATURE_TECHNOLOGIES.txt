@@ -1,0 +1,64 @@
+FEATURE / TECHNOLOGY / ENTRY POINT
+
+Accounts: Firebase Auth + Firestore; email/password and linked-phone SMS;
+local_auth OS biometric session unlock; password/action-link recovery;
+Profile -> Security & Account, and the login method menu.
+
+Tickets: shared Firebase orders/tickets, validated guest/date/pricing, point
+redemption, campaign limits, persistent uncertain-checkout recovery, QR/NFC,
+PDF receipts and unified purchase history. Ticket confirmations do not charge
+a bank/card, as agreed. Currency conversions use actual dated reference rates.
+
+Virtual Queue: transaction-based individual and group reservations, capacity
+guards, height/ticket checks, reminders, cancellation, staff check-in, completed
+visit ratings, loyalty credit and configurable no-show deductions.
+
+Groups: rotating invitations, registered/guest members, separate ticket links,
+atomic multi-member booking, opt-in live location with expiry and cleanup.
+
+Crowd heatmap: Python/scikit-learn Gaussian KernelDensity fitted using current
+confirmed queue-place counts. This is queue activity, not a claim to count all
+people physically standing in the park. Mapbox tiles connect when configured.
+
+Recommendations: Python TF-IDF catalogue vectors + cosine nearest neighbours,
+saved interests and the visitor's actual highly rated visits. Height, closure,
+existing bookings, capacity and time-window rules still govern the itinerary.
+
+Park Assistant: English/Malay/Chinese catalogue/help retrieval using TF-IDF,
+feature links, real browser/Android speech input and text-to-speech output.
+It uses current catalogue values instead of inventing prices, waits or venues.
+
+Landmark camera: OpenCV ORB feature matching with RANSAC geometry checks and
+ambiguity rejection. Admin -> Landmark References supplies real venue images;
+Map -> Locate a Landmark confirms the detected starting point.
+
+Indoor navigation: official Situm SDK with actual venue/API credentials,
+positioning survey and paths supplied by the user. No Wi-Fi measurements are
+fabricated in the browser. See SETUP_CONNECTIONS.txt.
+
+Smart Photos: OpenCV YuNet detection + SFace embeddings, explicit opt-in selfie
+enrolment, private templates/originals, watermarked matching galleries, optional
+photo codes, real image edits, trusted pricing, points, purchase entitlements,
+digital downloads and SMTP delivery connection.
+
+Photo kiosk: separate visitor shopping/sign-in session, same-project purchases
+and points, private QR/NFC print requests, actual edits/PDF print jobs and an
+explicit physical collection step. Printer/NFC hardware needs hands-on checks.
+
+Admin: visitor/access management, support conversations/private notes, ticket
+packages/orders, facilities/slots, ride entry, photographers, campaigns/rewards,
+loyalty/photo/weather policies, date-range sales/admission/top-ten/PDF reports.
+Weather policies issue compensation automatically after an eligible observation;
+private cursor batches resume safely and voucher grants are idempotent.
+Crowd Monitoring refreshes queue demand, peak check-in hours and aggregated
+same-pass journeys. Staff can move directly into facility availability controls.
+Reports include voucher issuance, actual use events and cohort redemption rates.
+
+Unusual Activity: Python IsolationForest after at least 20 active visitor
+samples, plus explicit cancellation/missed-visit/device-session review rules.
+Signals are for staff review; they do not automatically suspend an account.
+
+Runtime: authenticated Node 22 application API uses the existing real Firebase
+project. Cloud Functions deployment was not required for local application use;
+no Firebase billing plan was changed. Python runs as a local JSON-lines worker.
+Isolated automated checks are separate from the running application.

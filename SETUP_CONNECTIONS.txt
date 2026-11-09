@@ -1,0 +1,143 @@
+CONNECTIONS AND MATCHING VERSIONS
+
+Run tool/run-app.cmd. Its first-run setup restores the pinned tools, locked
+Flutter/functions/Firebase CLI dependencies and AI models. A new Windows PC
+follows RUN_ON_ANOTHER_PC.txt. Keep pubspec.lock, functions/package-lock.json and
+tool/firebase/package-lock.json. Do not run pub upgrade to make computers match.
+
+Matching tools:
+Flutter 3.41.0; Dart 3.11.0; Node 22.23.4; npm 10.9.9;
+Firebase CLI 15.35.0; Python 3.12.14 (3.12 required).
+FlutterFire CLI 1.4.1 is only needed to regenerate Firebase configuration.
+AI dependencies are pinned exactly in ai/requirements.txt. Model files are
+verified against ai/model_manifest.json. The launcher restores these automatically.
+tool/setup-ai.ps1 remains available for repairing the prepared AI environment.
+
+New pinned Flutter packages for the completed connections:
+local_auth 3.0.2; situm_flutter 3.27.51; flutter_svg 2.2.3.
+Their transitive packages are fixed by the combined pubspec.lock.
+
+Android builds:
+Temurin JDK 21.0.13+9; Gradle 8.14; Android Gradle Plugin 8.13.2;
+Kotlin 2.2.20; compile SDK 36; min SDK 24; NDK 28.2.13676358.
+The project downloaded required SDK/build components using already accepted
+SDK licences. tool/setup-java.ps1 installs the verified project-local JDK and
+configures Flutter to use it. Android Studio's Java 25 does not build this setup.
+
+FIREBASE
+Project: themeparksmartmanagement. Use the existing registered apps and accounts.
+The setup opens Firebase CLI sign-in when needed. Run tool/firebase-login.cmd
+to renew or change that sign-in. No global npm Firebase installation is needed.
+Use your own account with project access. Never share CLI tokens,
+authorisation codes, passwords or service-account files in chat or Git.
+Admin access comes from the Auth admin custom claim, not a visitor profile edit.
+
+PHONE SIGN-IN
+Security & Account -> Linked Phone Number verifies and links the number to the
+existing email account. A contact number in Firestore alone is not a linked Auth
+sign-in method. Enable Firebase Phone Authentication, authorised domains and the
+appropriate SMS regions/quotas in your project. Availability depends on Firebase
+SMS/billing settings; those settings were not changed. Register your Android
+app's SHA fingerprints and follow the iOS phone-auth setup on a Mac.
+No fake SMS codes or fixture accounts were added to the shared Firebase project.
+Official steps: https://firebase.google.com/docs/auth/flutter/phone-auth
+
+DEVICE UNLOCK
+Enable Device Authentication after signing in on the installed Android/iOS app.
+It unlocks a retained Firebase session using the OS biometric prompt. Signing
+out still ends that session; sign in with email/phone again on a new device.
+Chrome does not provide the native local_auth biometric prompt. Photo matching
+is separate from device authentication. Test on your own supported phone.
+https://pub.dev/packages/local_auth
+
+ANDROID DEVICE / LOCAL API
+Connect an Android phone with USB debugging, then run tool/run-android.cmd.
+The script forwards the phone's local port 8787 to this PC using adb reverse.
+The application API remains bound to this PC's loopback address.
+For multiple devices: tool/run-android.cmd DEVICE_ID (from flutter devices).
+Do not point an actual phone at 127.0.0.1:8787 without USB forwarding.
+An internet connection is still required for Firebase and external map services.
+An iOS binary must be built/signed on a Mac; it has not been compiled on Windows.
+
+MAPBOX AND SITUM
+Copy config/mobile.example.json to env.json in the project root. env.json is
+already ignored by Git. Fill only your own credentials and actual venue data.
+Restart the launcher after changes; Dart defines are compiled into the app.
+MAPBOX_PUBLIC_TOKEN must be a scoped pk. token, never a secret sk. token.
+MAPBOX_STYLE defaults to mapbox/streets-v12. PARK_NORTH/SOUTH/EAST/WEST must be
+the surveyed bounds corresponding to your attraction-map coordinates. Without
+bounds the park map remains schematic. Group GPS maps need the token but do
+not need those park bounds. Official logo and attribution remain on Mapbox maps.
+https://docs.mapbox.com/api/maps/static-tiles/
+
+For Situm, create/survey the actual venue and configure its floorplans, Wi-Fi/BLE
+positioning and pedestrian paths in the Situm dashboard. Set SITUM_API_KEY and
+SITUM_BUILDING_ID; optionally SITUM_PROFILE. SITUM_POI_MAP is a JSON string
+mapping Firebase attraction IDs to actual Situm POI IDs, for example:
+{"firebase-attraction-id":"situm-poi-id"}
+The installed Android/iOS app then offers Live Park Navigation through the
+official SDK. Its normal location controls use the venue's positioning service.
+The Chrome app does not claim to detect Wi-Fi position. Landmark recognition
+uses admin-uploaded actual reference photographs and requires user confirmation.
+https://pub.dev/packages/situm_flutter
+https://situm.com/docs/mobile-sdks-introduction-requirements-code-examples-and-more/
+
+EMAIL PHOTO DELIVERY
+Copy config/services.example.json to .local/services.json.
+Set smtp.host, port (465/587/2525), security (ssl/starttls), username, password,
+from and enabled=true using your provider's SMTP/app-password credentials.
+This file stays local and is ignored by Git. Do not put SMTP secrets in env.json,
+Flutter code, screenshots or messages. TLS certificate verification is enabled.
+New purchases can queue delivery when configured. Earlier pending-setup emails
+are not bulk-sent automatically: the visitor uses Resend Photo Email.
+Uncertain SMTP outcomes require review/resend; they are not retried repeatedly.
+Digital downloads remain available in the application independently of email.
+No actual email was sent during the automated checks.
+https://docs.python.org/3.12/library/smtplib.html
+
+WEATHER BENEFITS / LOYALTY
+Admin -> Promotions & Rewards -> Weather Benefits: set the real park name,
+latitude/longitude, precipitation threshold and the benefit you actually honour.
+Enable only after reviewing those settings. The connector uses current
+Open-Meteo model-based weather information, not invented on-site measurements.
+Once enabled, the running API checks weather and issues one voucher per eligible
+ticket-owning visitor for the affected day. Weather fetches are cached for 15
+minutes; bounded issuance batches run every minute and resume with a private
+cursor. Late purchases and closing/restricted accounts are excluded. A visitor
+can also open Park Offers to retrieve the same voucher without receiving a copy.
+https://open-meteo.com/en/docs
+No-show deductions remain disabled unless enabled by an administrator; their
+effective date prevents retroactive deductions. Points never fall below zero.
+Purchase earning rates are snapshotted on confirmed orders.
+
+Admin -> Crowd Monitoring refreshes queue demand every 30 seconds. Its heatmap
+uses confirmed places in today's remaining return windows. Hourly peaks and
+journey counts use actual staff check-ins. Journeys require the same admission
+pass reference and check-ins within three hours on the same day. No continuous
+GPS movement is invented when venue positioning has not been configured.
+
+NFC AND PRINTING
+Android pass sharing uses a read-only NFC Forum Type 4 NDEF text record, AID
+D2760000850101. The phone must support HCE, be unlocked and have NFC enabled.
+Pass sharing expires after one minute. Android staff devices can read those
+passes; desktop kiosks can use compatible NDEF readers configured as keyboards.
+PC/SC-only readers need their vendor's keyboard/bridge software. QR remains an
+available entrance/collection method. Hardware was not connected for this work.
+Connect a printer with the correct 6x8 or 8x10 paper/finish. The kiosk generates
+one actual PDF page per copy and opens the OS print dialog. Confirm that the
+job was sent, then confirm physical collection. Cancelling does not collect it.
+https://developer.android.com/develop/connectivity/nfc/hce
+
+CURRENCY DISPLAY
+Select MYR/USD/SGD/CNY/EUR from the Tickets hub. Foreign prices use dated daily
+Frankfurter reference conversions. Checkout, points accounting and receipts
+remain in MYR; no bank/card charge is made by the agreed confirmation flow.
+https://frankfurter.dev/
+
+LOCKFILE CHECKSUMS FOR SHARING THIS COMBINED VERSION
+pubspec.lock SHA256:
+3087a9d35a1599d563d6d96e5eef1d2542f570683ad46bda76d822976bf92b41
+functions/package-lock.json SHA256:
+0d966beb647e9a73b22399f33891c5293175f92c2bafaac294853d19c9aa14dd
+Compare the files/checksums after copying this final primary project. Future
+intentional dependency changes will create new checksums for both members.

@@ -1,90 +1,295 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../accounts/account_repository.dart';
+import '../../accounts/account_widgets.dart';
+import '../widgets/rewards_widgets.dart';
 
 class PreferencesPage extends StatefulWidget {
-  const PreferencesPage({super.key});
+  final AccountRepository? repository;
+  const PreferencesPage({super.key, this.repository});
   @override
   State<PreferencesPage> createState() => _PreferencesPageState();
 }
 
 class _PreferencesPageState extends State<PreferencesPage> {
-  static const rose = Color(0xFFAD7472);
-  final height = TextEditingController();
-  final food = <String>{};
-  final interests = <String>{};
-  bool loaded = false, saving = false;
-  static const foodOptions = ['Halal', 'Vegetarian', 'Vegan', 'No pork', 'No seafood', 'No preference'];
-  static const interestOptions = ['Thrill rides', 'Family rides', 'Water rides', 'Shows', 'Food & dining', 'Photo spots'];
+  late final repo = widget.repository ?? FirebaseAccountRepository(),
+      stream = repo.profile();
+  final nickname = TextEditingController(),
+      heightText = TextEditingController();
+  final food = <String>{}, interests = <String>{};
+  Map<String, dynamic>? base;
+  int? height;
+  bool busy = false;
+  String? error;
   @override
-  void dispose() { height.dispose(); super.dispose(); }
-
-  Widget choices(String title, List<String> options, Set<String> selected) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(padding: const EdgeInsets.only(top: 20, bottom: 8), child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
-      Wrap(spacing: 8, runSpacing: 5, children: options.map((option) => FilterChip(
-        label: Text(option), selected: selected.contains(option),
-        selectedColor: const Color(0xFFF0DDDA), checkmarkColor: rose,
-        onSelected: (value) => setState(() { if (value) { selected.add(option); } else { selected.remove(option); } }),
-      )).toList()),
-    ],
-  );
-
-  Future<void> save() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    final raw = height.text.trim();
-    final value = raw.isEmpty ? null : int.tryParse(raw);
-    if (raw.isNotEmpty && (value == null || value < 50 || value > 250)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid height between 50 and 250 cm.')));
-      return;
-    }
-    setState(() => saving = true);
-    try {
-      await FirebaseFirestore.instance.collection('visitors').doc(user.uid).update({
-        'heightCm': value,
-        'foodPreferences': food.toList(),
-        'parkInterests': interests.toList(),
-      });
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preferences saved successfully.')));
-    } on FirebaseException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to save: ${e.code}')));
-    } finally { if (mounted) setState(() => saving = false); }
+  void dispose() {
+    nickname.dispose();
+    heightText.dispose();
+    super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Scaffold(body: Center(child: Text('Please log in again.')));
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF4EF),
-      appBar: AppBar(title: const Text('Preferences & Interests'), backgroundColor: const Color(0xFFFDF4EF), foregroundColor: const Color(0xFF263238)),
-      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('visitors').doc(user.uid).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) return const Center(child: Text('Unable to load preferences.'));
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          if (!loaded) {
-            final data = snapshot.data!.data() ?? {};
-            height.text = data['heightCm']?.toString() ?? '';
-            food.addAll((data['foodPreferences'] as List<dynamic>? ?? []).whereType<String>());
-            interests.addAll((data['parkInterests'] as List<dynamic>? ?? []).whereType<String>());
-            loaded = true;
-          }
-          return ListView(padding: const EdgeInsets.all(24), children: [
-            const Text('Personalize your park experience', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 18),
-            TextField(controller: height, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Height (cm) · optional', prefixIcon: Icon(Icons.height), border: OutlineInputBorder())),
-            choices('Food preferences', foodOptions, food),
-            choices('Park interests', interestOptions, interests),
-            const SizedBox(height: 28),
-            FilledButton(onPressed: saving ? null : save, style: FilledButton.styleFrom(backgroundColor: rose, minimumSize: const Size.fromHeight(52)), child: Text(saving ? 'Saving...' : 'Save Preferences')),
-          ]);
-        },
-      ),
+  Map<String, dynamic> get changes {
+    if (base == null) return {};
+    final next = {
+      'nickname': nickname.text.trim(),
+      'heightCm': height,
+      'foodPreferences': food.toList()..sort(),
+      'parkInterests': interests.toList()..sort(),
+    };
+    return Map.fromEntries(
+      next.entries.where((e) {
+        final old = base![e.key];
+        if (old is List && e.value is List) {
+          final a = old.whereType<String>().toList()..sort();
+          return !accountSame(a, e.value);
+        }
+        return !accountSame(old ?? (e.key == 'nickname' ? '' : null), e.value);
+      }),
     );
   }
+
+  Widget choices(
+    Map<String, String> options,
+    Set<String> selected, {
+    bool foodGroup = false,
+  }) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final choice in options.entries)
+        ChoiceChip(
+          label: Text(
+            choice.value,
+            style: TextStyle(
+              fontSize: 12,
+              color: selected.contains(choice.key) ? Colors.white : rewardInk,
+            ),
+          ),
+          selected: selected.contains(choice.key),
+          showCheckmark: true,
+          checkmarkColor: Colors.white,
+          selectedColor: rewardRose,
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFFE2C8C3)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(11),
+          ),
+          onSelected: busy
+              ? null
+              : (value) => setState(() {
+                  if (value) {
+                    if (foodGroup) {
+                      if (choice.key == 'No preference') {
+                        selected.clear();
+                      } else {
+                        selected.remove('No preference');
+                      }
+                    }
+                    selected.add(choice.key);
+                  } else {
+                    selected.remove(choice.key);
+                  }
+                }),
+        ),
+    ],
+  );
+  Future<void> save() async {
+    if (busy || base == null) return;
+    setState(() => error = null);
+    if (nickname.text.trim().length > 40) {
+      setState(() => error = 'Keep your nickname within 40 characters.');
+      return;
+    }
+    final next = int.tryParse(heightText.text.trim());
+    if (heightText.text.trim().isNotEmpty &&
+        (next == null || next < 50 || next > 250)) {
+      setState(() => error = 'Enter a height between 50 and 250 cm.');
+      return;
+    }
+    height = next;
+    final updates = changes;
+    if (updates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your preferences are up to date.')),
+      );
+      return;
+    }
+    setState(() => busy = true);
+    try {
+      await repo.save(base!, updates);
+      if (mounted) {
+        setState(() => base = {...base!, ...updates});
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Preferences saved.')));
+      }
+    } catch (e) {
+      if (mounted) setState(() => error = accountError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AccountScaffold(
+    title: 'Preferences & Interests',
+    dirty:
+        changes.isNotEmpty ||
+        (heightText.text.isNotEmpty && int.tryParse(heightText.text) == null),
+    busy: busy,
+    child: StreamBuilder<Map<String, dynamic>?>(
+      stream: stream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: accountDescription(
+              'Unable to load preferences. Reopen this page to retry.',
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(color: rewardRose),
+          );
+        }
+        if (base == null) {
+          base = Map.from(snapshot.data!);
+          nickname.text = base!['nickname'] as String? ?? '';
+          height = (base!['heightCm'] as num?)?.toInt();
+          heightText.text = height?.toString() ?? '';
+          food.addAll(
+            (base!['foodPreferences'] as List? ?? []).whereType<String>(),
+          );
+          interests.addAll(
+            (base!['parkInterests'] as List? ?? []).whereType<String>(),
+          );
+        }
+        return ListView(
+          primary: false,
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
+          children: [
+            RewardCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  accountHeading('About You'),
+                  accountDescription('Nickname'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: nickname,
+                    maxLength: 40,
+                    onChanged: (_) => setState(() {}),
+                    decoration: accountInput('How should we call you?')
+                        .copyWith(
+                          counterText: '',
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                        ),
+                  ),
+                  const SizedBox(height: 19),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Height',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 92,
+                        child: TextField(
+                          controller: heightText,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.right,
+                          onChanged: (v) =>
+                              setState(() => height = int.tryParse(v)),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 4),
+                            suffixText: 'cm',
+                            border: InputBorder.none,
+                            hintText: 'Optional',
+                          ),
+                          style: const TextStyle(
+                            color: rewardRose,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (height != null)
+                        IconButton(
+                          tooltip: 'Clear height',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: busy
+                              ? null
+                              : () => setState(() {
+                                  height = null;
+                                  heightText.clear();
+                                }),
+                          icon: const Icon(
+                            Icons.close,
+                            size: 16,
+                            color: rewardRose,
+                          ),
+                        ),
+                    ],
+                  ),
+                  Slider(
+                    value: (height ?? 165).clamp(50, 250).toDouble(),
+                    min: 50,
+                    max: 250,
+                    divisions: 200,
+                    activeColor: rewardRose,
+                    onChanged: busy
+                        ? null
+                        : (v) => setState(() {
+                            height = v.round();
+                            heightText.text = height.toString();
+                          }),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            RewardCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  accountHeading('Food Preferences'),
+                  accountDescription('Select all that apply'),
+                  const SizedBox(height: 12),
+                  choices(foodChoices, food, foodGroup: true),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            RewardCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  accountHeading('Park Interests'),
+                  accountDescription(
+                    'Help us personalise your recommendations',
+                  ),
+                  const SizedBox(height: 12),
+                  choices(interestChoices, interests),
+                ],
+              ),
+            ),
+            accountFailure(error),
+            const SizedBox(height: 15),
+            RewardButton(
+              busy ? 'Saving…' : 'Save Preferences',
+              onPressed: busy ? null : save,
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }

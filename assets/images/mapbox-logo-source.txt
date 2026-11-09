@@ -1,0 +1,5 @@
+Mapbox logo, used only as attribution on maps using Mapbox services.
+Unmodified SVG from Mapbox GL JS 3.0.1 official stylesheet:
+https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css
+Attribution guidance: https://docs.mapbox.com/help/dive-deeper/attribution/
+Mapbox and its logo are trademarks of Mapbox.
