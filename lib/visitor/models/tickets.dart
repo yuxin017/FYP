@@ -275,6 +275,44 @@ class ParkTicket {
       );
 }
 
+class TicketCurrencyQuote {
+  final String id, currency, asOf;
+  final int amountMinor, baseMinor;
+  final double rate;
+  final DateTime? expiresAt;
+  const TicketCurrencyQuote({
+    required this.id,
+    required this.currency,
+    required this.amountMinor,
+    required this.baseMinor,
+    required this.rate,
+    required this.asOf,
+    this.expiresAt,
+  });
+  String get label => '$currency ${(amountMinor / 100).toStringAsFixed(2)}';
+  Map<String, dynamic> toMap() => {
+    'currencyQuoteId': id,
+    'paymentCurrency': currency,
+    'paymentTotalMinor': amountMinor,
+    'exchangeRate': rate,
+    'exchangeRateDate': asOf,
+    if (expiresAt != null)
+      'quoteExpiresAt': expiresAt!.toUtc().toIso8601String(),
+  };
+  factory TicketCurrencyQuote.fromMap(
+    Map<String, dynamic> data,
+    int baseMinor,
+  ) => TicketCurrencyQuote(
+    id: data['currencyQuoteId'] as String? ?? '',
+    currency: data['paymentCurrency'] as String,
+    amountMinor: (data['paymentTotalMinor'] as num).toInt(),
+    baseMinor: baseMinor,
+    rate: (data['exchangeRate'] as num).toDouble(),
+    asOf: data['exchangeRateDate'] as String? ?? '',
+    expiresAt: DateTime.tryParse(data['quoteExpiresAt'] as String? ?? ''),
+  );
+}
+
 class TicketOrder {
   final String id,
       packageName,
@@ -292,6 +330,7 @@ class TicketOrder {
   final DateTime? createdAt;
   final List<String> ticketIds;
   final List<TicketCartLine> lines;
+  final TicketCurrencyQuote? currencyQuote;
   const TicketOrder({
     required this.id,
     required this.packageName,
@@ -309,39 +348,46 @@ class TicketOrder {
     this.displayCode = '',
     this.ticketIds = const [],
     this.lines = const [],
+    this.currencyQuote,
   });
+  String get paymentLabel => currencyQuote?.label ?? priceLabel(totalMinor);
   String get reference =>
       displayCode.isEmpty ? bookingReference(id, visitDate) : displayCode;
   int get subtotal =>
       subtotalMinor == 0 ? totalMinor + pointsUsed : subtotalMinor;
-  factory TicketOrder.fromMap(String id, Map<String, dynamic> data) =>
-      TicketOrder(
-        id: id,
-        packageName: data['packageName'] as String,
-        visitDate: data['visitDate'] as String,
-        requestId: data['requestId'] as String,
-        quantity: (data['quantity'] as num).toInt(),
-        totalMinor: (data['totalMinor'] as num).toInt(),
-        subtotalMinor: (data['subtotalMinor'] as num?)?.toInt() ?? 0,
-        pointsUsed: (data['pointsUsed'] as num?)?.toInt() ?? 0,
-        loyaltyEarnRate: (data['loyaltyEarnRate'] as num?)?.toInt() ?? 1,
-        discountMinor: (data['discountMinor'] as num?)?.toInt() ?? 0,
-        promoCode: data['promoCode'] as String? ?? '',
-        paymentMethod: data['paymentMethod'] as String? ?? 'card',
-        displayCode: data['displayCode'] as String? ?? '',
-        ticketIds:
-            (data['ticketIds'] as List?)?.whereType<String>().toList() ?? [],
-        lines:
-            (data['lineItems'] as List?)
-                ?.map(
-                  (line) => TicketCartLine.fromMap(
-                    Map<String, dynamic>.from(line as Map),
-                  ),
-                )
-                .toList() ??
-            [],
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-      );
+  factory TicketOrder.fromMap(
+    String id,
+    Map<String, dynamic> data,
+  ) => TicketOrder(
+    id: id,
+    packageName: data['packageName'] as String,
+    visitDate: data['visitDate'] as String,
+    requestId: data['requestId'] as String,
+    quantity: (data['quantity'] as num).toInt(),
+    totalMinor: (data['totalMinor'] as num).toInt(),
+    subtotalMinor: (data['subtotalMinor'] as num?)?.toInt() ?? 0,
+    pointsUsed: (data['pointsUsed'] as num?)?.toInt() ?? 0,
+    loyaltyEarnRate: (data['loyaltyEarnRate'] as num?)?.toInt() ?? 1,
+    discountMinor: (data['discountMinor'] as num?)?.toInt() ?? 0,
+    promoCode: data['promoCode'] as String? ?? '',
+    paymentMethod: data['paymentMethod'] as String? ?? 'card',
+    displayCode: data['displayCode'] as String? ?? '',
+    ticketIds: (data['ticketIds'] as List?)?.whereType<String>().toList() ?? [],
+    lines:
+        (data['lineItems'] as List?)
+            ?.map(
+              (line) => TicketCartLine.fromMap(
+                Map<String, dynamic>.from(line as Map),
+              ),
+            )
+            .toList() ??
+        [],
+    createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+    currencyQuote:
+        data['paymentCurrency'] != null && data['paymentCurrency'] != 'MYR'
+        ? TicketCurrencyQuote.fromMap(data, (data['totalMinor'] as num).toInt())
+        : null,
+  );
 }
 
 class TicketCheckout {
@@ -355,6 +401,7 @@ class TicketCheckout {
   final int? expectedUnitPriceMinor;
   final List<TicketCartLine> lines;
   final List<TicketGuest> guests;
+  final TicketCurrencyQuote? currencyQuote;
   const TicketCheckout({
     required this.packageId,
     required this.visitDate,
@@ -368,6 +415,7 @@ class TicketCheckout {
     this.cardLast4 = '',
     this.promoCode = '',
     this.discountMinor = 0,
+    this.currencyQuote,
   });
   factory TicketCheckout.journey({
     required String requestId,
@@ -378,6 +426,7 @@ class TicketCheckout {
     String cardLast4 = '',
     String promoCode = '',
     int discountMinor = 0,
+    TicketCurrencyQuote? currencyQuote,
   }) {
     if (lines.isEmpty) throw ArgumentError('Choose a pass before checkout.');
     return TicketCheckout(
@@ -395,6 +444,7 @@ class TicketCheckout {
       cardLast4: cardLast4,
       promoCode: promoCode,
       discountMinor: discountMinor,
+      currencyQuote: currencyQuote,
     );
   }
   bool get isJourney => lines.isNotEmpty;
@@ -402,6 +452,7 @@ class TicketCheckout {
       ? lines.fold(0, (amount, line) => amount + line.subtotal)
       : (expectedUnitPriceMinor ?? 0) * quantity;
   int get total => subtotal - pointsUsed - discountMinor;
+  String get paymentLabel => currencyQuote?.label ?? priceLabel(total);
   String get fingerprint => sha256
       .convert(
         utf8.encode(
@@ -413,6 +464,7 @@ class TicketCheckout {
             'cardLast4': cardLast4,
             if (promoCode.isNotEmpty) 'promoCode': promoCode,
             if (discountMinor > 0) 'discountMinor': discountMinor,
+            if (currencyQuote != null) ...currencyQuote!.toMap(),
           }),
         ),
       )
@@ -433,6 +485,7 @@ class TicketCheckout {
       'cardLast4': cardLast4,
       'promoCode': promoCode,
       'discountMinor': discountMinor,
+      if (currencyQuote != null) ...currencyQuote!.toMap(),
     },
   };
   factory TicketCheckout.fromMap(Map<String, dynamic> data) => TicketCheckout(
@@ -463,5 +516,9 @@ class TicketCheckout {
     cardLast4: data['cardLast4'] as String? ?? '',
     promoCode: data['promoCode'] as String? ?? '',
     discountMinor: (data['discountMinor'] as num?)?.toInt() ?? 0,
+    currencyQuote:
+        data['paymentCurrency'] != null && data['paymentCurrency'] != 'MYR'
+        ? TicketCurrencyQuote.fromMap(data, 0)
+        : null,
   );
 }

@@ -285,8 +285,17 @@ void main() {
     (tester) async {
       final repo = FixtureAdmin();
       await openAdmin(tester, repo);
-      for(int i=0;i<20 && find.text('Ticket Validation').hitTestable().evaluate().isEmpty;i++){
-        await tester.drag(find.byKey(const Key('admin-sidebar-list')),const Offset(0,-120));await tester.pumpAndSettle();
+      for (
+        int i = 0;
+        i < 20 &&
+            find.text('Ticket Validation').hitTestable().evaluate().isEmpty;
+        i++
+      ) {
+        await tester.drag(
+          find.byKey(const Key('admin-sidebar-list')),
+          const Offset(0, -120),
+        );
+        await tester.pumpAndSettle();
       }
       await tester.tap(find.text('Ticket Validation').first);
       await tester.pumpAndSettle();
@@ -318,6 +327,21 @@ void main() {
     await tester.tap(find.byTooltip('Open admin navigation'));
     await tester.pumpAndSettle();
     expect(find.text('Dashboard'), findsOneWidget);
+    final menuScroll = find.descendant(
+      of: find.byKey(const Key('admin-sidebar-list')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Feedback & Complaints'),
+      250,
+      scrollable: menuScroll,
+    );
+    expect(find.text('Feedback & Complaints').hitTestable(), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Pass Packages'),
+      -250,
+      scrollable: menuScroll,
+    );
     await tester.tap(find.text('Pass Packages').first);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

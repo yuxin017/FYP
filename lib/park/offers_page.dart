@@ -156,6 +156,14 @@ class _ParkOffersPageState extends State<ParkOffersPage> {
                                   color: Color(0xFF7C8289),
                                 ),
                               ),
+                              if (d['parkName'] is String)
+                                Text(
+                                  d['parkName'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: photoRose,
+                                  ),
+                                ),
                             ],
                           ),
                         ),

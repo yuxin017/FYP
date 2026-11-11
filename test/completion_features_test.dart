@@ -115,6 +115,78 @@ void main() {
         );
   });
   testWidgets(
+    'all policy tabs are visible and reachable in a narrow admin window',
+    (tester) async {
+      await viewport(tester, const Size(420, 1000));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ParkManagementPage(repository: FixtureParkAdmin()),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (final section in [
+        'Promotions',
+        'Reward Catalogue',
+        'Loyalty Rules',
+        'Photo Prices',
+        'Weather Benefits',
+      ]) {
+        expect(
+          find.widgetWithText(ChoiceChip, section).hitTestable(),
+          findsOneWidget,
+        );
+      }
+      await tester.tap(find.text('Weather Benefits'));
+      await tester.pumpAndSettle();
+      expect(find.text('Rain threshold'), findsOneWidget);
+      await tester.tap(find.text('Loyalty Rules'));
+      await tester.pumpAndSettle();
+      expect(find.text('Missed reservation policy'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'loyalty editor validates the repeated-miss limit and saves an integer',
+    (tester) async {
+      await viewport(tester, const Size(1200, 1000));
+      final repo = FixtureParkAdmin();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ParkPolicyEditor(
+              repository: repo,
+              kind: 'loyalty',
+              initial: const {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final threshold = find.widgetWithText(
+        TextFormField,
+        'Missed Reservations Before Deduction',
+      );
+      await tester.enterText(threshold, '1');
+      await tester.tap(find.text('Save Changes'));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter a whole number from 2 to 20.'), findsOneWidget);
+      expect(repo.calls, isEmpty);
+      await tester.enterText(threshold, '3');
+      await tester.tap(find.text('Save Changes'));
+      await tester.pumpAndSettle();
+      expect(repo.calls.single['noShowThreshold'], 3);
+      expect(repo.calls.single['action'], 'saveLoyalty');
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'campaign editor saves typed amounts, dates and actual eligible purchase scopes',
     (tester) async {
       await viewport(tester, const Size(1200, 1000));
@@ -208,7 +280,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Live Queue Heatmap'), findsOneWidget);
+      expect(find.text('Queue Demand Heatmap'), findsOneWidget);
       expect(find.text('8'), findsOneWidget);
       await tester.tap(find.text('Last 7 Days'));
       await tester.pumpAndSettle();

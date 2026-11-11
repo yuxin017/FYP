@@ -43,7 +43,9 @@ class FirebaseParkAdminRepository implements ParkAdminRepository {
     String action,
     Map<String, dynamic> data,
   ) => ApplicationApi(auth: auth).post(
-    '/v1/${['saveLandmark', 'setLandmarkActive', 'anomalies', 'crowd'].contains(action) ? 'ai' : 'park'}/$action',
+    action == 'liveCrowd'
+        ? '/v1/location/summary'
+        : '/v1/${['saveLandmark', 'setLandmarkActive', 'anomalies', 'crowd'].contains(action) ? 'ai' : 'park'}/$action',
     data,
   );
 }

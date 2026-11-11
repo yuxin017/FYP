@@ -40,7 +40,7 @@ def recommendations(data):
 
 
 def queue_density(data):
-    points = data.get('points', [])[:1000]
+    points = data.get('points', [])[:1024]
     active = [p for p in points if all(isinstance(p.get(k), (int, float)) and math.isfinite(p[k]) for k in ['x', 'y', 'weight']) and 0 <= p['x'] <= 1 and 0 <= p['y'] <= 1 and p['weight'] > 0]
     size = 32
     axis = np.linspace(0, 1, size)

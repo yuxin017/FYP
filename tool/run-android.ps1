@@ -19,6 +19,6 @@ if (-not $DeviceId) {
 & $adb -s $DeviceId reverse tcp:8787 tcp:8787
 if ($LASTEXITCODE -ne 0) { throw 'USB forwarding failed. Confirm USB debugging on the connected phone.' }
 $flutterArgs = @('--no-version-check','run','--no-pub','-d',$DeviceId)
-if (Test-Path -LiteralPath (Join-Path $script:FypProjectRoot 'env.json')) { $flutterArgs += '--dart-define-from-file=env.json' }
+$flutterArgs += '--dart-define-from-file=.local/mobile.defines.json'
 & $runtime.flutter @flutterArgs
 exit $LASTEXITCODE

@@ -14,3 +14,10 @@ test('only public offers are visible to visitors; landmark references remain sta
  for(const [id,isPublic]of [[key+'-public',true],[key+'-private',false]]){await call(root+'/campaigns/'+id,'owner','PATCH',{fields:{public:{booleanValue:isPublic}}});assert.equal((await call(root+'/campaigns/'+id,owner.idToken)).status,isPublic?200:403);assert.equal((await call(root+'/campaigns/'+id,staff.idToken)).status,200);}
  await call(root+'/landmarkReferences/'+key,'owner','PATCH',{fields:{name:{stringValue:'Isolated reference'}}});assert.equal((await call(root+'/landmarkReferences/'+key,owner.idToken)).status,403);assert.equal((await call(root+'/landmarkReferences/'+key,staff.idToken)).status,200);assert.equal((await call(root+'/landmarkReferences/'+key,staff.idToken,'DELETE')).status,403);
 });
+
+test('recovery secrets, currency quotes and precise movement records remain private even for staff clients',async()=>{
+ for(const name of ['recoveryChallenges','recoverySubjects','recoveryLimits','ticketCurrencyQuotes','parkLocations','parkLocationSamples','noShowCounters','reminderDevices','reservationReminderRequests','applicationConfiguration','serverConfiguration'])for(const token of [owner.idToken,other.idToken,staff.idToken]){
+  assert.equal((await call(root+'/'+name+'/'+key,token)).status,403,name);
+  assert.equal((await call(root+'/'+name+'/'+key,token,'PATCH',{fields:{ownerUid:{stringValue:owner.localId}}})).status,403,name);
+ }
+});

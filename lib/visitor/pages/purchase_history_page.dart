@@ -217,10 +217,8 @@ class _PurchaseHistoryBodyState extends State<PurchaseHistoryBody> {
                           ),
                         ),
                         Text(
-                          photoMoney(
-                            row.ticket?.totalMinor ??
-                                row.photo!.data['totalMinor'] as num,
-                          ),
+                          row.ticket?.paymentLabel ??
+                              photoMoney(row.photo!.data['totalMinor'] as num),
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

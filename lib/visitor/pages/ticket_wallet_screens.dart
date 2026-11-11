@@ -702,7 +702,7 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
                       ),
                     ),
                     Text(
-                      priceLabel(order.totalMinor),
+                      order.paymentLabel,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

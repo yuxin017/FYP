@@ -19,6 +19,7 @@ import '../../park/intelligence_repository.dart';
 import '../../park/landmark_page.dart';
 import '../../park/situm_venue_page.dart';
 import '../../park/venue_configuration.dart';
+import '../../park/live_location_page.dart';
 import '../../reservations/data/reservation_repository.dart';
 import '../../reservations/pages/my_reservations_page.dart';
 import '../../reservations/pages/reserve_attraction_page.dart';
@@ -413,6 +414,17 @@ class _MapPageState extends State<MapPage> {
                       'Locate a Landmark',
                       Icons.photo_camera_outlined,
                       landmark,
+                    ),
+                    const SizedBox(height: 8),
+                    _mapButton(
+                      'My Live Location',
+                      Icons.location_searching,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LiveLocationPage(),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     _mapButton(

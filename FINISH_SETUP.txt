@@ -1,0 +1,124 @@
+REMAINING CONNECTIONS - TAR UMT PENANG
+
+Use the primary FYP folder. The app continues to use themeparksmartmanagement.
+Start/rebuild with: .\tool\run-app.cmd -Restart
+
+AGREED PRESENTATION ARCHITECTURE - 10 NOVEMBER 2026
+Keep Firebase Spark. Run the existing Node.js/Python application services on
+the presentation PC, using the actual Firebase accounts and Firestore data.
+USE_FIREBASE_FUNCTIONS stays false. Cloud Functions deployment is not required
+for this chosen presentation setup. Do not enable billing or deploy functions.
+Phone/SMS sign-in and linking were removed at the user's request. Authentication
+uses email/password with email OTP for password recovery. Profile phone numbers
+are contact details only; no SMS provider setup is required.
+
+CURRENT SETUP ORDER
+1. Password-OTP inbox delivery confirmed by the user on 10 November 2026.
+   Purchased-photo inbox delivery also confirmed by the user on that date after
+   uploading a photo, claiming its code and completing a digital-photo order.
+2. Weather benefits saved and verified in Firebase: enabled for TAR UMT Penang,
+   2 mm rain threshold, one complimentary drink at the park café, 30-day validity.
+   Latest checked weather did not qualify for rain compensation; actual voucher
+   issuance/redemption still needs qualifying weather and a valid visitor ticket.
+   Loyalty rules were also saved and verified: 1 point per RM 1, 10 points per
+   attraction check-in and a 10-point repeated-miss deduction. The updated code
+   defaults to starting deductions at the second miss. The existing catalogue
+   contains active digital-photo, dining and souvenir rewards; no further
+   catalogue setup is required to continue implementation.
+3. Rehearse startup and the main flows on the presentation PC using the latest
+   source from the feat/a-foundation branch. Pull the latest changes first.
+4. Resume printer/NFC/other physical-device checks when hardware is available.
+   Closed-app reservation reminders are implemented. Allow notifications on each
+   device and verify actual delivery with an upcoming reservation. Android also
+   needs alarm permission. No additional provider account or Blaze setup is needed.
+5. Indoor positioning LAST: IndoorAtlas is selected, but its SDK replacement,
+   account credentials, floorplans, signal survey and device checks are pending.
+The running application still contains the previous, unconfigured Situm SDK.
+No indoor-positioning service is being presented as complete.
+
+1. GMAIL
+SMTP authentication, password-OTP inbox delivery and purchased-photo inbox
+delivery are verified. The user confirmed both emails on 10 November 2026.
+Settings are shared in server-only Firebase
+configuration; a new PC loads them automatically after project sign-in. No
+message was sent by the connection check. The user separately confirmed real
+inbox delivery through Forgot Password. The following command changes the
+shared sender when needed.
+
+Open https://myaccount.google.com/security and enable 2-Step Verification.
+Open https://myaccount.google.com/apppasswords, name it Theme Park and create it.
+In this project's PowerShell terminal run:
+  .\tool\configure-email.cmd
+Enter your sending Gmail address and the generated 16-character app password.
+Then run:
+  .\tool\check-email.cmd
+The check signs in to SMTP but does not send any messages.
+The app password is saved to the protected server configuration in Firebase.
+It is not written to Git, the client bundle or a local email settings file.
+Google instructions: https://support.google.com/accounts/answer/185833
+
+After successful setup, try Forgot Password with your own registered account.
+Read the six-digit email code, verify it, choose a new password and sign in.
+Photo purchases can use this same sending account. Downloaded copies remain
+available independently. Earlier unsent purchases require Resend Photo Email.
+
+2. MAPBOX
+Connected on 2026-11-10. The public token and TAR UMT Penang campus bounds
+are saved in shared Firebase settings. A live tile request succeeded and the
+campus map was verified in the running application. No token re-entry is needed
+on another PC after its normal project setup. To replace the token later:
+Create/sign in to your own Mapbox account and open:
+https://console.mapbox.com/account/access-tokens/
+Copy the default public token starting with pk. and run:
+  .\tool\configure-map.cmd
+The command saves the token in shared Firebase settings. Restart the app to
+compile the current settings. Other PCs receive the same token automatically.
+Official token guide: https://docs.mapbox.com/accounts/guides/tokens/
+
+INDOOR POSITIONING - ON HOLD, COMPLETE LAST
+IndoorAtlas is the selected replacement. Its connection has not been coded or
+configured yet. Create the self-service account only when resuming this setup;
+its free trial lasts 30 days. A supported Android phone/tablet is needed for
+the on-site MapCreator survey. Do not run the legacy Situm command below for
+the selected replacement. The following notes describe existing code only.
+
+LEGACY SITUM INDOOR NAVIGATION REFERENCE
+Create an account following https://situm.com/docs/situm-quickstart-guide/
+Create the chosen campus building, place its actual floorplan(s), add walking
+paths and points of interest, and complete its on-site positioning calibration.
+Run .\tool\configure-situm.cmd to save the mobile key, building ID and profile
+to shared Firebase settings. SITUM_POI_MAP in the shared client settings maps
+actual Firebase attraction IDs to actual Situm POI IDs as a JSON string.
+Restart the app. The official SDK runs in the installed Android/iOS app.
+The map boundary alone cannot supply indoor Wi-Fi positioning. Hardware and
+on-site checks remain on hold as requested.
+
+OPTIONAL CLOUD DEPLOYMENT - NOT THE SELECTED SETUP
+The user chose to keep Spark and the running Node/Python backend. The following
+deployment notes are retained for a future explicitly requested architecture
+change; they are not the next setup steps.
+Cloud Functions deployment requires Blaze billing. No billing change is made
+by the application setup. Decide with the project owner before enabling it.
+When ready to deploy the prepared functions, run:
+  .\tool\deploy-functions.cmd
+This deploys the themepark codebase and enables shared cloud reservation routing.
+Phone authentication is outside the chosen application scope. Keep that provider
+disabled; an ordinary profile contact number is not an authentication method.
+
+5. DEVICE AND PHYSICAL CHECKS - ON HOLD
+Android: device unlock, camera scanning, NFC/HCE and actual indoor positioning.
+Printer: correct paper/finish, print a purchased order, confirm physical receipt.
+iOS: build/sign and verify on a Mac/iPhone; Windows cannot verify that build.
+
+6. HANDS-ON REVIEW OF THIS UPDATE
+- Forgot Password -> email -> six digits -> new password -> sign in.
+- Tickets -> choose USD/SGD/CNY/EUR -> guests -> review -> payment quote.
+  Confirm once; check currency and amount in history and the PDF receipt.
+- Map -> My Live Location -> review sharing consent. At campus, check position,
+  Stop Sharing and disappearance from Live Visitors after stopping/expiry.
+- Virtual Queue -> Crowd Heatmap -> switch Queue Demand / Live Visitors.
+- Admin -> Crowd Monitoring -> expand Live Movement and Visitor Locations.
+- Park Offers -> check TAR UMT Penang weather. Weather benefits are separately
+  controlled by your existing administrator settings.
+
+Use the feat/a-foundation Git branch for this combined application.

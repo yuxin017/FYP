@@ -1,5 +1,6 @@
 'use strict';
 const {spawn}=require('node:child_process'),fs=require('node:fs'),path=require('node:path');
+const {serviceConfig}=require('./service_config.cjs');
 class PythonWorker{
   constructor({root=path.resolve(__dirname,'..')}={}){this.root=root;this.pending=new Map();this.sequence=0;this.process=null;}
   start(){
@@ -21,7 +22,9 @@ class PythonWorker{
   }
   async call(operation,data={}){
     if(this.pending.size>=4)throw Error('Photo processing is busy. Please try again shortly.');this.start();const id=++this.sequence;
-    return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.pending.delete(id);reject(Error('Photo processing took too long. Please try again.'));},90000);timer.unref();this.pending.set(id,{resolve,reject,timer});this.process.stdin.write(JSON.stringify({...data,id,operation})+'\n',error=>{if(error){clearTimeout(timer);this.pending.delete(id);reject(Error('Unable to reach the AI service. Please retry.'));}});});
+    const payload={...data,id,operation};
+    if(['send_photo_email','send_reset_email','check_email'].includes(operation))payload._smtp=serviceConfig().smtp;
+    return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.pending.delete(id);reject(Error('Photo processing took too long. Please try again.'));},90000);timer.unref();this.pending.set(id,{resolve,reject,timer});this.process.stdin.write(JSON.stringify(payload)+'\n',error=>{if(error){clearTimeout(timer);this.pending.delete(id);reject(Error('Unable to reach the AI service. Please retry.'));}});});
   }
   close(){const child=this.process;this.process=null;child?.stdin.end();}
 }

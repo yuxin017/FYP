@@ -121,6 +121,12 @@ class TicketsPageState extends State<TicketsPage> {
     }
   }
 
+  Future<void> _payment() async {
+    if (await journey.prepareCurrency(currency.selected) && mounted) {
+      _go('payment');
+    }
+  }
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: Listenable.merge([journey, currency]),
@@ -167,10 +173,7 @@ class TicketsPageState extends State<TicketsPage> {
           );
           break;
         case 'review':
-          page = TicketReviewScreen(
-            journey: journey,
-            onContinue: () => _go('payment'),
-          );
+          page = TicketReviewScreen(journey: journey, onContinue: _payment);
           break;
         case 'payment':
           page = TicketPaymentScreen(journey: journey, onPay: _pay);
@@ -459,13 +462,11 @@ class TicketsPageState extends State<TicketsPage> {
                         ),
                       ),
                     Expanded(child: page),
-                    if (currency.selected != 'MYR')
+                    if (currency.selected != 'MYR' && currencyVisible)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(18, 4, 18, 6),
                         child: Text(
-                          currencyVisible
-                              ? 'Reference conversion as of ${currency.asOf}. Checkout amounts are in MYR.'
-                              : 'Order amounts and receipts are in MYR.',
+                          'Reference conversion as of ${currency.asOf}. A fixed currency quote is shown before confirmation.',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 10,

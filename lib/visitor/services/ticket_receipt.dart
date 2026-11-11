@@ -56,6 +56,16 @@ Future<void> downloadTicketReceipt(
             'Total: ${money(order.totalMinor)}',
             style: pw.TextStyle(fontSize: 17, fontWeight: pw.FontWeight.bold),
           ),
+          if (order.currencyQuote case final quote?) ...[
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'Confirmed payment amount: ${quote.label}',
+              style: pw.TextStyle(fontSize: 17, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'Exchange rate: 1 MYR = ${quote.rate} ${quote.currency}; rate date ${quote.asOf}.',
+            ),
+          ],
           pw.SizedBox(height: 25),
           pw.Text(
             'Your digital tickets are available in My Tickets. Present each guest\'s QR code at the park entrance.',

@@ -799,7 +799,7 @@ class _TicketPaymentScreenState extends State<TicketPaymentScreen> {
             ? 'Confirming…'
             : j.pending != null
             ? 'Retry checkout'
-            : 'Pay ${priceLabel(j.total)}',
+            : 'Pay ${j.paymentLabel}',
         onPressed: j.busy
             ? null
             : () async {
@@ -827,13 +827,28 @@ class _TicketPaymentScreenState extends State<TicketPaymentScreen> {
               const Text('Total to Pay', style: TextStyle(fontSize: 16)),
               const SizedBox(height: 6),
               Text(
-                priceLabel(j.pending?.total ?? j.total),
+                j.paymentLabel,
                 style: const TextStyle(
                   fontSize: 27,
                   color: ticketRose,
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              if ((j.pending?.currencyQuote ?? j.currencyQuote)
+                  case final quote?) ...[
+                const SizedBox(height: 10),
+                Text(
+                  '1 MYR = ${quote.rate} ${quote.currency} • Rate date ${quote.asOf}',
+                  style: const TextStyle(fontSize: 12, color: ticketMuted),
+                ),
+              ],
+              if (j.pending == null && j.paymentCurrency != 'MYR')
+                TextButton(
+                  onPressed: j.busy
+                      ? null
+                      : () => j.prepareCurrency(j.paymentCurrency),
+                  child: const Text('Refresh Currency Quote'),
+                ),
             ],
           ),
         ),
@@ -1003,7 +1018,7 @@ class TicketSuccessScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'Payment of ${priceLabel(request?.total ?? order?.totalMinor ?? 0)} was successful.',
+          'Payment of ${request?.paymentLabel ?? order?.paymentLabel ?? priceLabel(0)} was successful.',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 15, color: ticketMuted),
         ),

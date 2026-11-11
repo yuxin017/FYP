@@ -1,0 +1,9 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "themepark",
+      "ignore": ["node_modules", ".git", "test", "*.log", "*.local"]
+    }
+  ]
+}

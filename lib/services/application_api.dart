@@ -16,9 +16,25 @@ class ApplicationApi {
   Future<Map<String, dynamic>> post(
     String route, [
     Map<String, dynamic> data = const {},
-  ]) async {
-    final token = await auth.currentUser?.getIdToken();
-    if (token == null) {
+  ]) => _post(route, data, authenticated: true);
+
+  Future<Map<String, dynamic>> recovery(
+    String action,
+    Map<String, dynamic> data,
+  ) {
+    if (!['send', 'verify'].contains(action)) {
+      throw ArgumentError.value(action, 'action');
+    }
+    return _post('/v1/recovery/$action', data, authenticated: false);
+  }
+
+  Future<Map<String, dynamic>> _post(
+    String route,
+    Map<String, dynamic> data, {
+    required bool authenticated,
+  }) async {
+    final token = authenticated ? await auth.currentUser?.getIdToken() : null;
+    if (authenticated && token == null) {
       throw const ApplicationApiException(
         'unauthenticated',
         'Please sign in again.',
@@ -33,7 +49,7 @@ class ApplicationApi {
           .post(
             Uri.parse('$origin$route'),
             headers: {
-              'Authorization': 'Bearer $token',
+              if (token != null) 'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
             body: jsonEncode(data),

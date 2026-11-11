@@ -1,7 +1,9 @@
 'use strict';
 const crypto=require('node:crypto'),{HttpsError}=require('firebase-functions/v2/https'),{promotionPrice,recordPromotion}=require('./promotion_pricing');
 const fail=(code,message)=>{throw new HttpsError(code,message);},validId=v=>typeof v==='string'&&/^[\w-]{1,100}$/.test(v),day=d=>new Date(d.getTime()+8*3600000).toISOString().slice(0,10),reference=(id,date)=>'TP-'+date.replaceAll('-','').slice(2)+'-'+id.slice(0,8).toUpperCase();
-function createTicketPromotionHandlers({db,FieldValue,clock=()=>new Date()}){
+function createTicketPromotionHandlers({db,FieldValue,exchangeRates,clock=()=>new Date()}){
+  const currency=d=>d.paymentCurrency??'MYR';
+  const basket=(d,total)=>crypto.createHash('sha256').update(JSON.stringify({lines:d.lines,guests:d.guests,pointsUsed:d.pointsUsed??0,promoCode:d.promoCode??'',total,paymentCurrency:currency(d)})).digest('hex');
   function input(request){const d=request.data;if(!request.auth?.uid||request.auth.token?.email_verified!==true)fail('unauthenticated','Sign in with a verified account.');if(!d||!/^[a-f0-9]{48}$/.test(d.requestId)||!Array.isArray(d.lines)||!d.lines.length||d.lines.length>5||!Array.isArray(d.guests)||d.guests.length<1||d.guests.length>10||!Number.isInteger(d.pointsUsed??0)||(d.pointsUsed??0)<0||(d.pointsUsed??0)%100!==0)fail('invalid-argument','Review your selected passes and guest details.');return d;}
   async function price(tx,request){
     const d=input(request),uid=request.auth.uid,[profile,access,security,loyalty]=await tx.getAll(db.doc('visitors/'+uid),db.doc('visitorAccess/'+uid),db.doc('accountSecurity/'+uid),db.doc('parkSettings/loyalty'));
@@ -21,15 +23,34 @@ function createTicketPromotionHandlers({db,FieldValue,clock=()=>new Date()}){
     return{items,subtotalMinor:subtotal,discountMinor:promotion.discountMinor,pointsUsed:used,totalMinor:subtotal-promotion.discountMinor-used,maxPoints,allowPoints:promotion.offer?.allowPoints!==false,profile,balance,rate,promotion};
   }
   const fields=v=>({subtotalMinor:v.subtotalMinor,discountMinor:v.discountMinor,pointsUsed:v.pointsUsed,totalMinor:v.totalMinor,maxPoints:v.maxPoints,allowPoints:v.allowPoints,currency:'MYR'});
-  async function quote(request){input(request);return db.runTransaction(async tx=>fields(await price(tx,request)));}
+  async function quote(request){
+    const d=input(request),code=currency(d);if(!['MYR','USD','SGD','CNY','EUR'].includes(code))fail('invalid-argument','Choose a supported payment currency.');
+    const rates=code==='MYR'?null:exchangeRates?await exchangeRates(request):fail('unavailable','Currency conversion is temporarily unavailable.');
+    const rate=code==='MYR'?1:rates.rates[code];if(!Number.isFinite(rate)||rate<=0)fail('unavailable','Currency conversion is temporarily unavailable.');
+    return db.runTransaction(async tx=>{
+      const value=await price(tx,request),paymentTotalMinor=Math.round(value.totalMinor*rate);
+      if(code==='MYR')return{...fields(value),paymentCurrency:code,paymentTotalMinor,exchangeRate:1};
+      const ref=db.collection('ticketCurrencyQuotes').doc(),expiresAt=new Date(clock().getTime()+15*60000);
+      tx.create(ref,{ownerUid:request.auth.uid,basket:basket(d,value.totalMinor),paymentCurrency:code,paymentTotalMinor,exchangeRate:rate,exchangeRateDate:rates.asOf,expiresAt});
+      return{...fields(value),paymentCurrency:code,paymentTotalMinor,exchangeRate:rate,exchangeRateDate:rates.asOf,currencyQuoteId:ref.id,quoteExpiresAt:expiresAt.toISOString()};
+    });
+  }
   async function checkout(request){
     const d=input(request),uid=request.auth.uid;if(!['card','fpx','touch-go','apple-pay','nfc'].includes(d.paymentMethod)||typeof d.clientFingerprint!=='string'||!/^[a-f0-9]{64}$/.test(d.clientFingerprint)||!/^$|^\d{4}$/.test(d.cardLast4??''))fail('invalid-argument','Review the payment option.');
-    const ref=db.doc('orders/'+d.requestId),fingerprint=crypto.createHash('sha256').update(JSON.stringify({lines:d.lines,guests:d.guests,pointsUsed:d.pointsUsed??0,promoCode:d.promoCode??'',expectedTotalMinor:d.expectedTotalMinor,paymentMethod:d.paymentMethod,cardLast4:d.cardLast4??''})).digest('hex');
+    const code=currency(d);if(!['MYR','USD','SGD','CNY','EUR'].includes(code))fail('invalid-argument','Choose a supported payment currency.');
+    const ref=db.doc('orders/'+d.requestId),fingerprint=crypto.createHash('sha256').update(JSON.stringify({lines:d.lines,guests:d.guests,pointsUsed:d.pointsUsed??0,promoCode:d.promoCode??'',expectedTotalMinor:d.expectedTotalMinor,paymentMethod:d.paymentMethod,cardLast4:d.cardLast4??'',...(code!=='MYR'?{paymentCurrency:code,currencyQuoteId:d.currencyQuoteId,paymentTotalMinor:d.paymentTotalMinor}:{})})).digest('hex');
     return db.runTransaction(async tx=>{const previous=await tx.get(ref);if(previous.exists){if(previous.data().ownerUid!==uid||previous.data().serverFingerprint!==fingerprint)fail('already-exists','This checkout reference belongs to another order.');return{orderId:ref.id};}
       const value=await price(tx,request);if(value.totalMinor!==d.expectedTotalMinor)fail('failed-precondition','The promotion or prices changed. Apply the promotion again before confirming.');
+      let conversion={paymentCurrency:'MYR',paymentTotalMinor:value.totalMinor,exchangeRate:1};
+      if(code!=='MYR'){
+        if(!validId(d.currencyQuoteId))fail('invalid-argument','Review the currency quote before confirming.');
+        const quote=(await tx.get(db.doc('ticketCurrencyQuotes/'+d.currencyQuoteId))).data();
+        if(!quote||quote.ownerUid!==uid||quote.paymentCurrency!==code||quote.basket!==basket(d,value.totalMinor)||quote.expiresAt.toDate()<=clock()||quote.paymentTotalMinor!==d.paymentTotalMinor)fail('failed-precondition','Your currency quote has expired or the booking changed. Review the total again before confirming.');
+        conversion={paymentCurrency:code,paymentTotalMinor:quote.paymentTotalMinor,exchangeRate:quote.exchangeRate,exchangeRateDate:quote.exchangeRateDate};
+      }
       const ticketIds=value.items.map((_,i)=>d.requestId+'_'+(i+1)),visitDate=d.lines[0].visitDate;
       const safeLines=d.lines.map(l=>({id:l.id,packageId:l.packageId,packageName:l.packageName,visitDate:l.visitDate,adults:l.adults,children:l.children,adultPriceMinor:l.adultPriceMinor,childPriceMinor:l.childPriceMinor,durationDays:l.durationDays,category:l.category==='annual'?'annual':'day',imageAsset:l.category==='annual'?'assets/images/ticketing/annual-pass.png':'assets/images/ticketing/castle.png'}));
-      tx.create(ref,{version:2,ownerUid:uid,requestId:ref.id,fingerprint:d.clientFingerprint,serverFingerprint:fingerprint,packageId:d.lines[0].packageId,packageName:d.lines.length===1?d.lines[0].packageName:'Theme Park Tickets',visitDate,quantity:value.items.length,ticketIds,items:value.items,lineItems:safeLines,subtotalMinor:value.subtotalMinor,discountMinor:value.discountMinor,pointsUsed:value.pointsUsed,totalMinor:value.totalMinor,loyaltyEarnRate:value.rate,promoCode:d.promoCode??'',paymentMethod:d.paymentMethod,cardLast4:d.paymentMethod==='card'?(d.cardLast4??''):'',currency:'MYR',status:'completed',displayCode:reference(ref.id,visitDate),createdAt:FieldValue.serverTimestamp()});
+      tx.create(ref,{...conversion,version:2,ownerUid:uid,requestId:ref.id,fingerprint:d.clientFingerprint,serverFingerprint:fingerprint,packageId:d.lines[0].packageId,packageName:d.lines.length===1?d.lines[0].packageName:'Theme Park Tickets',visitDate,quantity:value.items.length,ticketIds,items:value.items,lineItems:safeLines,subtotalMinor:value.subtotalMinor,discountMinor:value.discountMinor,pointsUsed:value.pointsUsed,totalMinor:value.totalMinor,loyaltyEarnRate:value.rate,promoCode:d.promoCode??'',paymentMethod:d.paymentMethod,cardLast4:d.paymentMethod==='card'?(d.cardLast4??''):'',currency:'MYR',status:'completed',displayCode:reference(ref.id,visitDate),createdAt:FieldValue.serverTimestamp()});
       for(let i=0;i<value.items.length;i++){const item=value.items[i],displayCode=reference(ref.id,item.visitDate)+'-'+String(i+1).padStart(2,'0');tx.create(db.doc('tickets/'+ticketIds[i]),{...item,item,version:2,index:i,ownerUid:uid,purchaserUid:uid,orderId:ref.id,displayCode,currency:'MYR',status:'valid',createdAt:FieldValue.serverTimestamp()});tx.create(db.doc('ticketReferences/'+displayCode),{ticketId:ticketIds[i],ownerUid:uid,guestEmail:item.guestEmail});}
       if(value.pointsUsed)tx.update(value.profile.ref,{loyaltyPoints:value.balance-value.pointsUsed,lastRedemptionOrderId:ref.id});recordPromotion(tx,value.promotion,uid,ref.id,FieldValue);return{orderId:ref.id};
     });

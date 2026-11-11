@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../attractions/models/park_time.dart';
 import '../../attractions/widgets/queue_attraction_card.dart';
 import '../data/reservation_store.dart';
@@ -8,6 +9,8 @@ import '../models/reservation.dart';
 import '../widgets/reservation_widgets.dart';
 import '../../visits/visit_pages.dart';
 import '../../visits/visit_repository.dart';
+import '../reminders/reservation_reminders.dart';
+import '../reminders/reminder_delivery.dart';
 
 class MyReservationsPage extends StatefulWidget {
   const MyReservationsPage({super.key, required this.store});
@@ -22,10 +25,44 @@ class _MyReservationsPageState extends State<MyReservationsPage> {
   final _requests = <String, String>{};
   Timer? _clock;
   String? _error;
+  SharedPreferences? _preferences;
+  final _reminderBusy = <String>{};
+  Future<void> _loadReminderPreferences() async {
+    final value = await SharedPreferences.getInstance();
+    if (mounted) setState(() => _preferences = value);
+  }
+
+  Future<void> _reminder(RideReservation reservation, bool enabled) async {
+    setState(() {
+      _reminderBusy.add(reservation.id);
+      _error = null;
+    });
+    try {
+      if (enabled) await reservationReminderDevice.enable(widget.store.uid);
+      await ReservationReminderSettings.save(
+        widget.store.uid,
+        reservation.id,
+        enabled,
+      );
+      await _loadReminderPreferences();
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _error = e is StateError
+              ? e.message.toString()
+              : 'The reminder could not be updated. Check your connection and try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _reminderBusy.remove(reservation.id));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _stream = widget.store.watchReservations();
+    _loadReminderPreferences();
     _clock = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -75,6 +112,15 @@ class _MyReservationsPageState extends State<MyReservationsPage> {
           widget.store.newRequestId,
         ),
       );
+      try {
+        await ReservationReminderSettings.save(
+          widget.store.uid,
+          reservation.id,
+          false,
+        );
+      } catch (_) {
+        /* The cancelled server reservation also prevents web delivery. */
+      }
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.removeCurrentSnackBar();
@@ -200,6 +246,45 @@ class _MyReservationsPageState extends State<MyReservationsPage> {
                               : queueRose,
                         ),
                       ),
+                      if (reservation.status == 'confirmed' &&
+                          reservation.startsAt.isAfter(DateTime.now()))
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text(
+                            'Reservation reminder',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          subtitle: Text(
+                            reservation.startsAt.difference(DateTime.now()) >=
+                                    const Duration(minutes: 15)
+                                ? '15 minutes before · On this device'
+                                : 'The reminder time has already passed.',
+                          ),
+                          value:
+                              _preferences?.getBool(
+                                ReservationReminderSettings.key(
+                                  widget.store.uid,
+                                  reservation.id,
+                                ),
+                              ) ==
+                              true,
+                          onChanged:
+                              _preferences == null ||
+                                  _reminderBusy.contains(reservation.id) ||
+                                  reservation.startsAt.difference(
+                                            DateTime.now(),
+                                          ) <
+                                          const Duration(minutes: 15) &&
+                                      _preferences?.getBool(
+                                            ReservationReminderSettings.key(
+                                              widget.store.uid,
+                                              reservation.id,
+                                            ),
+                                          ) !=
+                                          true
+                              ? null
+                              : (value) => _reminder(reservation, value),
+                        ),
                       if (reservation.status == 'confirmed' &&
                           reservation.endsAt.isAfter(DateTime.now()))
                         Align(

@@ -45,6 +45,7 @@ dependencies:
   # Other App Features
   flutter_tts: ^4.2.5
   flutter_local_notifications: ^19.5.0
+  timezone: 0.10.1
   shared_preferences: ^2.5.3
   url_launcher: ^6.3.2
 

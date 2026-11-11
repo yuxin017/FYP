@@ -59,6 +59,28 @@ function Test-FypTool([string]$Executable, [string]$Kind, [string]$Version) {
     } catch { return $false }
 }
 
+function Test-FypPythonInstaller([string]$Executable) {
+    if (-not $Executable -or -not (Test-Path -LiteralPath $Executable -PathType Leaf)) { return $false }
+    $probe = $null
+    try {
+        $info = New-Object System.Diagnostics.ProcessStartInfo
+        $info.FileName = $Executable
+        $info.Arguments = '-c "import pip._internal.operations.install.wheel"'
+        $info.UseShellExecute = $false
+        $info.CreateNoWindow = $true
+        $info.RedirectStandardOutput = $true
+        $info.RedirectStandardError = $true
+        $probe = [System.Diagnostics.Process]::Start($info)
+        $output = $probe.StandardOutput.ReadToEndAsync()
+        $errors = $probe.StandardError.ReadToEndAsync()
+        if (-not $probe.WaitForExit(30000)) { $probe.Kill(); return $false }
+        $null = $output.GetAwaiter().GetResult()
+        $null = $errors.GetAwaiter().GetResult()
+        return $probe.ExitCode -eq 0
+    } catch { return $false }
+    finally { if ($probe) { $probe.Dispose() } }
+}
+
 function Install-FypTool([string]$Kind, $Release, [string]$CacheRoot) {
     $destination = Join-Path $CacheRoot ($Kind + '-' + $Release.version)
     $executable = Join-Path $destination $Release.executable

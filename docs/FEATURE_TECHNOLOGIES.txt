@@ -1,24 +1,43 @@
 FEATURE / TECHNOLOGY / ENTRY POINT
 
-Accounts: Firebase Auth + Firestore; email/password and linked-phone SMS;
-local_auth OS biometric session unlock; password/action-link recovery;
-Profile -> Security & Account, and the login method menu.
+Accounts: Firebase Auth + Firestore; email/password sign-in;
+local_auth OS biometric session unlock; six-digit email OTP/password recovery
+with one-time Firebase reset grants and legacy action-link support;
+Profile -> Security & Account, and the email login screen.
 
 Tickets: shared Firebase orders/tickets, validated guest/date/pricing, point
 redemption, campaign limits, persistent uncertain-checkout recovery, QR/NFC,
 PDF receipts and unified purchase history. Ticket confirmations do not charge
-a bank/card, as agreed. Currency conversions use actual dated reference rates.
+a bank/card, as agreed. Foreign confirmations use actual dated rates, trusted
+15-minute quotes and saved currency/amount/rate snapshots in history/receipts.
 
 Virtual Queue: transaction-based individual and group reservations, capacity
 guards, height/ticket checks, reminders, cancellation, staff check-in, completed
-visit ratings, loyalty credit and configurable no-show deductions.
+visit ratings, loyalty credit and configurable repeated-no-show deductions.
+The first missed reservation does not deduct points. Staff configure a 2–20
+miss threshold; deductions start at that count and never exceed the balance.
+Concurrent jobs settle each reservation once and release its reserved capacity.
+Reservation reminders: scheduled OS notifications on Android/iOS and encrypted
+Web Push in supported browsers. Enable under Profile -> Security & Account ->
+Notifications, then opt in per reservation. Android requests notification and
+alarm permission; its receivers restore schedules after reboot. Native schedules
+work without the Node process once saved. Web delivery requires the running Node
+backend, internet and browser notification support. Focus/force-stop/power settings
+can affect delivery. Cancellation updates and sign-out remove device reminders;
+native changes made elsewhere synchronize when the device next opens the app.
+Browser jobs recheck the live reservation and account before sending, expire at
+the return-window start and deduplicate retries. Signing keys are stored privately
+in Firebase, so another clone loads the same service configuration automatically.
 
 Groups: rotating invitations, registered/guest members, separate ticket links,
 atomic multi-member booking, opt-in live location with expiry and cleanup.
 
-Crowd heatmap: Python/scikit-learn Gaussian KernelDensity fitted using current
-confirmed queue-place counts. This is queue activity, not a claim to count all
-people physically standing in the park. Mapbox tiles connect when configured.
+Crowd heatmap: Python/scikit-learn Gaussian KernelDensity. Separate views use
+confirmed queue demand or recent voluntarily shared GPS/Situm positions.
+Movement and peak hours are aggregated without visitor identities. Live
+positions expire after two minutes and movement samples after 24 hours.
+TAR UMT Penang bounds and a Mapbox public token are configured in shared
+Firebase settings; live tiles and the campus map were verified on 2026-11-10.
 
 Recommendations: Python TF-IDF catalogue vectors + cosine nearest neighbours,
 saved interests and the visitor's actual highly rated visits. Height, closure,
@@ -32,9 +51,10 @@ Landmark camera: OpenCV ORB feature matching with RANSAC geometry checks and
 ambiguity rejection. Admin -> Landmark References supplies real venue images;
 Map -> Locate a Landmark confirms the detected starting point.
 
-Indoor navigation: official Situm SDK with actual venue/API credentials,
-positioning survey and paths supplied by the user. No Wi-Fi measurements are
-fabricated in the browser. See SETUP_CONNECTIONS.txt.
+Indoor navigation: IndoorAtlas is the selected replacement, deferred until last
+at the user's request. SDK replacement, credentials, floorplans, an on-site
+survey and device verification remain pending. The previous unconfigured Situm
+screen is still in the source. Indoor positioning is not complete.
 
 Smart Photos: OpenCV YuNet detection + SFace embeddings, explicit opt-in selfie
 enrolment, private templates/originals, watermarked matching galleries, optional
@@ -59,6 +79,14 @@ samples, plus explicit cancellation/missed-visit/device-session review rules.
 Signals are for staff review; they do not automatically suspend an account.
 
 Runtime: authenticated Node 22 application API uses the existing real Firebase
-project. Cloud Functions deployment was not required for local application use;
-no Firebase billing plan was changed. Python runs as a local JSON-lines worker.
+project. The chosen presentation setup keeps Firebase Spark and runs Node/Python
+on the presentation PC. Cloud Functions deployment is not required for that
+setup; USE_FIREBASE_FUNCTIONS stays false. Phone/SMS authentication was removed
+at the user's request. Profile phone numbers are contact details only.
+Python runs as a local JSON-lines worker. Provider settings are shared through
+Firebase. Server-only email credentials load into backend memory and are passed
+privately to the mail worker. SMTP sign-in from the shared source is verified;
+the user confirmed password-OTP and purchased-photo inbox delivery on 10 November
+2026. The launcher retrieves client
+settings automatically, without copying env.json or a local email settings file.
 Isolated automated checks are separate from the running application.

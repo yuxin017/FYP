@@ -7,6 +7,7 @@ import '../data/reservation_repository.dart';
 import '../models/reservation.dart';
 import '../widgets/reservation_widgets.dart';
 import '../reminders/reservation_reminders.dart';
+import '../reminders/reminder_delivery.dart';
 import 'reservation_confirmation_page.dart';
 
 class ReviewReservationPage extends StatefulWidget {
@@ -31,6 +32,32 @@ class _ReviewReservationPageState extends State<ReviewReservationPage> {
   late final String _requestId;
   bool _saving = false, _reminder = false, _completed = false;
   String? _error;
+  bool _enablingReminder = false;
+  Future<void> _setReminder(bool value) async {
+    if (!value) {
+      setState(() => _reminder = false);
+      return;
+    }
+    setState(() {
+      _enablingReminder = true;
+      _error = null;
+    });
+    try {
+      await reservationReminderDevice.enable(widget.store.uid);
+      if (mounted) setState(() => _reminder = true);
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _error = e is StateError
+              ? e.message.toString()
+              : 'Allow notifications on this device and try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _enablingReminder = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -99,8 +126,8 @@ class _ReviewReservationPageState extends State<ReviewReservationPage> {
         title: 'Review Reservation',
         action: ReservationButton(
           label: _saving ? 'Confirming…' : 'Confirm Reservation',
-          busy: _saving || _completed,
-          onPressed: _confirm,
+          busy: _saving || _completed || _enablingReminder,
+          onPressed: _enablingReminder ? null : _confirm,
         ),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
@@ -156,9 +183,9 @@ class _ReviewReservationPageState extends State<ReviewReservationPage> {
                       ),
                       Switch(
                         value: _reminder && canRemind,
-                        onChanged: _saving || !canRemind
+                        onChanged: _saving || _enablingReminder || !canRemind
                             ? null
-                            : (value) => setState(() => _reminder = value),
+                            : _setReminder,
                         activeThumbColor: Colors.white,
                         activeTrackColor: queueRose,
                       ),
@@ -166,7 +193,7 @@ class _ReviewReservationPageState extends State<ReviewReservationPage> {
                   ),
                   Text(
                     canRemind
-                        ? 'In-app reminder while this app is open.'
+                        ? 'Receive a notification on this device, even when the app is closed.'
                         : 'Reminders require a return time at least 15 minutes away.',
                     style: const TextStyle(
                       fontSize: 10,

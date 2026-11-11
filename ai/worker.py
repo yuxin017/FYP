@@ -159,9 +159,15 @@ def render(value, edits):
 
 def handle(data):
     op = data.get("operation")
+    if op == 'check_email':
+        from mail_delivery import check_smtp
+        return check_smtp(data)
     if op == 'send_photo_email':
         from mail_delivery import send_photo_email
         return send_photo_email(data)
+    if op == 'send_reset_email':
+        from mail_delivery import send_reset_email
+        return send_reset_email(data)
     if op in ['recommendations', 'queue_density', 'assistant', 'landmark_features', 'recognize_landmark','anomalies']:
         import park_intelligence as intelligence
         return intelligence.landmark_features(data['imageBase64']) if op == 'landmark_features' else getattr(intelligence, op)(data)

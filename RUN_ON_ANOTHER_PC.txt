@@ -26,7 +26,10 @@ Android Studio and Java are not needed for the visitor/admin/kiosk web apps.
 3. If this PC is not signed into Firebase CLI, complete the browser Google
    sign-in opened by setup. That account must have access to the existing project.
    The operator's CLI sign-in is separate from visitor/admin sign-in inside the app.
-   Passwords, CLI tokens and local provider secrets are not included in Git.
+   Shared settings are then fetched automatically from themeparksmartmanagement.
+   Email settings come from a server-only Firebase document and stay in backend
+   memory. You do not copy an app password or recreate an env.json file.
+   Passwords and CLI tokens are not included in Git or the Flutter application.
 
 4. Wait until Flutter reports that the application is being served, then open:
    Visitor: http://localhost:5173/
@@ -54,13 +57,19 @@ Include all application source, assets, rules, tests, tool scripts, and:
    tool/toolchains.json / ai/requirements.txt / ai/model_manifest.json
 Do not copy .local, node_modules, build, .dart_tool, env.json or private secrets.
 The repository's .gitignore excludes those machine-specific files.
+The launcher generates .local/mobile.defines.json from shared Firebase settings.
+It contains client configuration only; it never contains SMTP credentials.
+The Node API reads the shared private email settings directly into memory.
 There is no need to install Codex or reproduce the author's directory layout.
 Keep the lockfiles; do not run pub upgrade to resolve startup messages.
 
 OPTIONAL CONNECTIONS / ANDROID
-Mapbox, Situm, email/SMS, actual park location and physical hardware still require
-the configuration described in SETUP_CONNECTIONS.txt. Their missing credentials
-do not prevent the main web application from starting.
+Mapbox and Situm setup is performed once for the shared Firebase project. Future
+clones fetch those settings automatically. Current email configuration and TAR UMT
+Penang location are already shared. Provider setup and hardware checks remain
+listed in SETUP_CONNECTIONS.txt. Missing map/indoor credentials do not prevent
+the main web application from starting. Authentication uses email/password and
+email OTP recovery. Phone numbers are contact details; SMS sign-in was removed.
 For an Android phone, install Android Studio/SDK Platform Tools and complete the
 Android SDK licences, enable USB debugging and run tool\run-android.cmd.
 The script prepares Java 21 and USB forwarding. An iOS build requires a Mac.

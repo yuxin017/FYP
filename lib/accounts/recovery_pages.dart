@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'account_repository.dart';
 import 'account_widgets.dart';
 import '../visitor/widgets/rewards_widgets.dart';
@@ -16,20 +17,25 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
   late final repo = widget.repository ?? FirebaseAccountRepository();
   final form = GlobalKey<FormState>(),
       email = TextEditingController(),
-      link = TextEditingController(),
       password = TextEditingController(),
       confirm = TextEditingController();
-  String stage = 'email', code = '';
+  final digits = List.generate(6, (_) => TextEditingController());
+  final digitFocus = List.generate(6, (_) => FocusNode());
+  String stage = 'email', code = '', challengeId = '';
   String? error, resetEmail;
   bool busy = false;
   int cooldown = 0;
+  int secondsLeft = 0;
+  DateTime? expiresAt, resendAt;
   Timer? timer;
   @override
   void initState() {
     super.initState();
     if (widget.initialCode != null) {
-      link.text = widget.initialCode!;
-      WidgetsBinding.instance.addPostFrameCallback((_) => verify());
+      code =
+          Uri.tryParse(widget.initialCode!)?.queryParameters['oobCode'] ??
+          widget.initialCode!;
+      WidgetsBinding.instance.addPostFrameCallback((_) => verifyLink());
     }
   }
 
@@ -37,7 +43,12 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
   void dispose() {
     timer?.cancel();
     email.dispose();
-    link.dispose();
+    for (final controller in digits) {
+      controller.dispose();
+    }
+    for (final focus in digitFocus) {
+      focus.dispose();
+    }
     password.dispose();
     confirm.dispose();
     super.dispose();
@@ -45,14 +56,22 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
 
   void countdown() {
     timer?.cancel();
-    cooldown = 60;
+    void update() {
+      final now = DateTime.now();
+      cooldown = ((resendAt!.difference(now).inMilliseconds + 999) ~/ 1000)
+          .clamp(0, 60);
+      secondsLeft = ((expiresAt!.difference(now).inMilliseconds + 999) ~/ 1000)
+          .clamp(0, 300);
+    }
+
+    update();
     timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) {
         t.cancel();
         return;
       }
-      setState(() => cooldown--);
-      if (cooldown <= 0) t.cancel();
+      setState(update);
+      if (cooldown <= 0 && secondsLeft <= 0) t.cancel();
     });
   }
 
@@ -64,12 +83,21 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
       error = null;
     });
     try {
-      await repo.resetEmail(email.text);
+      final result = await repo.sendResetOtp(email.text);
       if (mounted) {
         setState(() {
           stage = 'sent';
+          challengeId = result['challengeId'] as String;
+          expiresAt = DateTime.parse(result['expiresAt'] as String);
+          resendAt = DateTime.now().add(
+            Duration(seconds: result['resendAfterSeconds'] as int),
+          );
+          for (final digit in digits) {
+            digit.clear();
+          }
           countdown();
         });
+        digitFocus.first.requestFocus();
       }
     } catch (e) {
       if (mounted) setState(() => error = accountError(e));
@@ -78,15 +106,8 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
     }
   }
 
-  Future<void> verify() async {
+  Future<void> verifyLink() async {
     if (busy) return;
-    final raw = link.text.trim();
-    final uri = Uri.tryParse(raw);
-    code = uri?.queryParameters['oobCode'] ?? raw;
-    if (code.isEmpty) {
-      setState(() => error = 'Paste the password reset link from your email.');
-      return;
-    }
     setState(() {
       busy = true;
       error = null;
@@ -106,6 +127,51 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
     }
   }
 
+  Future<void> verifyOtp() async {
+    if (busy) return;
+    final otp = digits.map((d) => d.text).join();
+    if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
+      setState(() => error = 'Enter all six digits from your email.');
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final result = await repo.verifyResetOtp(challengeId, otp);
+      if (!mounted) return;
+      timer?.cancel();
+      FocusManager.instance.primaryFocus?.unfocus();
+      setState(() {
+        code = result['code'] as String;
+        resetEmail = result['email'] as String;
+        stage = 'password';
+        for (final digit in digits) {
+          digit.clear();
+        }
+      });
+    } catch (e) {
+      if (mounted) setState(() => error = accountError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  void enterDigits(int index, String value) {
+    if (value.length > 1) {
+      final start = value.length == 6 ? 0 : index;
+      for (var i = start; i < 6 && i - start < value.length; i++) {
+        digits[i].text = value[i - start];
+      }
+      digitFocus[(start + value.length).clamp(0, 5)].requestFocus();
+    } else if (value.isNotEmpty && index < 5) {
+      digitFocus[index + 1].requestFocus();
+    } else if (value.isEmpty && index > 0) {
+      digitFocus[index - 1].requestFocus();
+    }
+  }
+
   Future<void> reset() async {
     if (busy || !form.currentState!.validate()) return;
     setState(() {
@@ -118,7 +184,6 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
         setState(() {
           password.clear();
           confirm.clear();
-          link.clear();
           code = '';
           stage = 'done';
         });
@@ -132,8 +197,13 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
 
   @override
   Widget build(BuildContext context) => AccountScaffold(
-    title: stage == 'password' ? 'Reset Password' : 'Forgot Password',
+    title: stage == 'password'
+        ? 'Reset Password'
+        : stage == 'sent'
+        ? 'Authentication'
+        : 'Forgot Password',
     bottomNav: false,
+    showHeaderTitle: false,
     busy: busy,
     child: ListView(
       primary: false,
@@ -145,7 +215,7 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
           stage == 'password'
               ? 'Reset Password'
               : stage == 'sent'
-              ? 'Check Your Email'
+              ? 'Authentication'
               : stage == 'done'
               ? 'Password Updated'
               : 'Forgot Password',
@@ -175,9 +245,14 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
                   controller: email,
                   keyboardType: TextInputType.emailAddress,
                   autofillHints: const [AutofillHints.email],
-                  decoration: accountInput(
-                    'Email Address',
-                  ).copyWith(prefixIcon: const Icon(Icons.mail_outline)),
+                  decoration: accountInput('Email Address').copyWith(
+                    prefixIcon: const Icon(Icons.mail_outline),
+                    filled: false,
+                    border: const UnderlineInputBorder(),
+                    enabledBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: rewardRose),
+                    ),
+                  ),
                   validator: emailError,
                 ),
                 const SizedBox(height: 40),
@@ -192,37 +267,96 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
-                Icons.mark_email_unread_outlined,
-                size: 65,
-                color: rewardRose,
+              const Text(
+                'You will receive an OTP if you have registered a profile with us.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: rewardInk, height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  for (var i = 0; i < 6; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: Semantics(
+                        label: 'OTP digit ${i + 1}',
+                        child: TextField(
+                          key: ValueKey('reset-otp-$i'),
+                          controller: digits[i],
+                          focusNode: digitFocus[i],
+                          enabled: !busy && secondsLeft > 0,
+                          keyboardType: TextInputType.number,
+                          textInputAction: i == 5
+                              ? TextInputAction.done
+                              : TextInputAction.next,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          autofillHints: i == 0
+                              ? const [AutofillHints.oneTimeCode]
+                              : null,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(6),
+                          ],
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: .85),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
+                          onChanged: (v) => enterDigits(i, v),
+                          onTap: () => digits[i].selection = TextSelection(
+                            baseOffset: 0,
+                            extentOffset: digits[i].text.length,
+                          ),
+                          onSubmitted: (_) => verifyOtp(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 20),
-              accountDescription(
-                'If an account exists for ${email.text.trim()}, a password reset link will arrive in its inbox. Check spam or junk folders too.',
+              Text(
+                secondsLeft > 0
+                    ? 'OTP will expire in ${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}'
+                    : 'Your OTP has expired. Request a new code.',
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 70),
               RewardButton(
-                cooldown > 0 ? 'Resend in ${cooldown}s' : 'Resend Reset Email',
-                outlined: true,
+                busy ? 'Checking…' : 'Verify',
+                onPressed: busy || secondsLeft == 0 ? null : verifyOtp,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Didn’t receive your OTP?',
+                textAlign: TextAlign.center,
+              ),
+              TextButton(
                 onPressed: busy || cooldown > 0 ? null : send,
+                child: Text(
+                  cooldown > 0 ? 'Try again in ${cooldown}s' : 'Try again',
+                ),
               ),
-              const SizedBox(height: 25),
-              accountHeading('Already have your reset link?'),
-              accountDescription(
-                'You can reset in the email link, or paste that link here to continue.',
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: link,
-                decoration: accountInput('Paste password reset link'),
-                autocorrect: false,
-                enableSuggestions: false,
-              ),
-              const SizedBox(height: 12),
-              RewardButton(
-                busy ? 'Checking…' : 'Continue',
-                onPressed: busy ? null : verify,
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () {
+                        timer?.cancel();
+                        setState(() {
+                          stage = 'email';
+                          error = null;
+                        });
+                      },
+                child: const Text('Use another email address'),
               ),
             ],
           ),
@@ -237,12 +371,14 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
                 AccountPasswordField(
                   controller: password,
                   label: 'New password',
+                  underlined: true,
                   validator: passwordError,
                 ),
                 const SizedBox(height: 20),
                 AccountPasswordField(
                   controller: confirm,
                   label: 'Confirm password',
+                  underlined: true,
                   validator: (v) =>
                       v != password.text ? 'Passwords do not match.' : null,
                 ),
@@ -277,6 +413,12 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
         TextButton(
           onPressed: busy ? null : () => Navigator.maybePop(context),
           child: const Text('Back to Log In'),
+        ),
+        const SizedBox(height: 40),
+        const Text(
+          'Version 1.0.0',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF918584), fontSize: 12),
         ),
       ],
     ),
@@ -405,6 +547,8 @@ class DataPrivacyPage extends StatelessWidget {
                             'Orders, tickets, rewards and support conversations are linked to your account. Staff with administrator access handle relevant park records. Private staff notes are restricted to administrators.',
                         'Photos and recognition':
                             'A profile avatar does not activate face recognition. The separate photo-matching preference is optional.',
+                        'Live location':
+                            'Location sharing is optional and runs while its screen is open in the foreground. Recent positions contribute to combined crowd information without displaying visitor names. Live positions expire after two minutes and private movement samples expire after 24 hours.',
                         'Your controls':
                             'Edit your profile and preferences, change your password or verified email, sign out of saved login devices, and permanently delete your account from Security & Account. Non-personal security and audit records may be retained.',
                         'Get in touch':

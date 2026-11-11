@@ -12,8 +12,10 @@ abstract class TicketRepository {
   Stream<List<ParkTicket>> tickets();
   Stream<List<TicketOrder>> orders();
   Future<void> checkout(TicketCheckout request);
-  Future<Map<String, dynamic>> promotionQuote(TicketCheckout request) =>
-      Future.value({'discountMinor': 0, 'allowPoints': true});
+  Future<Map<String, dynamic>> promotionQuote(
+    TicketCheckout request, {
+    String paymentCurrency = 'MYR',
+  }) => Future.value({'discountMinor': 0, 'allowPoints': true});
   Stream<BookingProfile> profile() => Stream.value(const BookingProfile());
   Future<ParkTicket> findTicket(String code) =>
       throw StateError('This ticket could not be found.');
@@ -25,8 +27,13 @@ class FirebaseTicketRepository implements TicketRepository {
   @override
   String? get userId => FirebaseAuth.instance.currentUser?.uid;
   @override
-  Future<Map<String, dynamic>> promotionQuote(TicketCheckout request) =>
-      ApplicationApi().post('/v1/tickets/quote', request.toMap());
+  Future<Map<String, dynamic>> promotionQuote(
+    TicketCheckout request, {
+    String paymentCurrency = 'MYR',
+  }) => ApplicationApi().post('/v1/tickets/quote', {
+    ...request.toMap(),
+    'paymentCurrency': paymentCurrency,
+  });
   @override
   Future<bool> orderExists(String id) async =>
       (await _db
@@ -128,7 +135,7 @@ class FirebaseTicketRepository implements TicketRepository {
   @override
   Future<void> checkout(TicketCheckout request) async {
     if (request.isJourney) {
-      if (request.promoCode.isNotEmpty) {
+      if (request.promoCode.isNotEmpty || request.currencyQuote != null) {
         await ApplicationApi().post('/v1/tickets/checkout', {
           ...request.toMap(),
           'expectedTotalMinor': request.total,

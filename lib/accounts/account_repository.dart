@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../visitor/models/tickets.dart';
+import '../services/application_api.dart';
+import '../reservations/reminders/reminder_delivery.dart';
 
 const foodChoices = <String, String>{
   'No preference': 'All',
@@ -55,6 +57,7 @@ String? passwordError(String? value) =>
     ? 'Use 8–128 characters, with uppercase, lowercase and a special character.'
     : null;
 String accountError(Object error) {
+  if (error is ApplicationApiException) return error.message;
   if (error is StateError) return error.message.toString();
   if (error is FirebaseAuthException) {
     return switch (error.code) {
@@ -122,6 +125,8 @@ abstract class AccountRepository {
   Future<void> save(Map<String, dynamic> base, Map<String, dynamic> updates);
   Future<void> createProfile(String name, String phone);
   Future<void> resetEmail(String email);
+  Future<Map<String, dynamic>> sendResetOtp(String email);
+  Future<Map<String, dynamic>> verifyResetOtp(String challengeId, String otp);
   Future<String> verifyReset(String code);
   Future<void> confirmReset(String code, String password);
   Future<void> reauthenticate(String password);
@@ -214,6 +219,14 @@ class FirebaseAccountRepository extends AccountRepository {
     await user.updateDisplayName(name.trim());
   }
 
+  @override
+  Future<Map<String, dynamic>> sendResetOtp(String email) =>
+      ApplicationApi(auth: auth).recovery('send', {'email': email.trim()});
+  @override
+  Future<Map<String, dynamic>> verifyResetOtp(String challengeId, String otp) =>
+      ApplicationApi(
+        auth: auth,
+      ).recovery('verify', {'challengeId': challengeId, 'otp': otp});
   @override
   Future<void> resetEmail(String email) async {
     try {
@@ -308,6 +321,9 @@ class FirebaseAccountRepository extends AccountRepository {
     await call('/v1/account/close', {'confirmation': 'DELETE'});
     final uid = identity?.uid;
     if (uid != null) {
+      try {
+        await reservationReminderDevice.endSession(uid);
+      } catch (_) {}
       final prefs = await SharedPreferences.getInstance();
       for (final key
           in prefs.getKeys().where((k) => k.contains(uid)).toList()) {

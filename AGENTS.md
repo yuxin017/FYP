@@ -10,3 +10,5 @@
 - The ticket payment action confirms and saves the booking without a bank/card charge, as agreed. Do not persist card numbers, expiry dates or CVVs.
 - Do not push to GitHub, merge or change the Firebase billing plan unless the user requests it.
 - Automated checks may use isolated fixtures; do not overwrite the user's existing visitor records or create fixture accounts in the shared Firebase project.
+- Keep Firebase Spark with the Node.js/Python presentation-PC backend. The user removed mobile-number/SMS authentication from scope. Use email/password sign-in and email OTP recovery; profile phone numbers are contact details only.
+- IndoorAtlas is on hold until the user resumes it. Reservation reminders use native OS schedules and browser Web Push; preserve device permission, cancellation and sign-out handling.

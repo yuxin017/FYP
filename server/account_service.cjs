@@ -4,16 +4,16 @@ const {randomBytes} = require('node:crypto');
 class AccountError extends Error {constructor(status,code,message){super(message);this.status=status;this.code=code;}}
 const fail=(status,code,message)=>{throw new AccountError(status,code,message);};
 const ownedCollections=['orders','tickets','ticketReferences','admissions','visitorSessions','rewardVouchers','loyaltyEvents','supportAttachments','supportMessages','supportNotes','supportEvents','supportCases','accountSessions','rideAdmissions','attractionRatings','attractionRatingAttachments','groupMembers','groupLocations','groupBookings','faceTemplates','faceProfiles','photoMatchingJobs','photoMatches','photoOrders','photoEntitlements','photoOrderPreviews','photoMatchReviews','kioskRequests','emailOutbox'];
-function createAccountService({auth,db,projectId,workspaceId,reservations,operations={},clock=()=>new Date()}) {
+ownedCollections.push('parkLocations','parkLocationSamples','noShowCounters','reminderDevices','reservationReminderRequests');
+function createAccountService({auth,db,projectId,workspaceId,reservations,recovery,operations={},clock=()=>new Date()}) {
   const jobs=new Map(), rate=new Map();
   const recent=token=>{if(!Number.isInteger(token.auth_time) || Math.abs(clock().getTime()/1000-token.auth_time)>300)fail(401,'recent-login-required','Please confirm your password again.');};
   async function requireOpen(uid){if((await db.get('accountSecurity/'+uid))?.closing)fail(409,'closure-in-progress','Account deletion is in progress. Return to Delete Account to finish.');}
-  async function syncProfile(token,phone=false){
+  async function syncProfile(token){
     await requireOpen(token.uid);
     const user=await auth.getUser(token.uid), profile=await db.get('visitors/'+token.uid);
     if(!profile || !user.emailVerified || !user.email) return {email: user.email||'', synced:false};
     if(profile.email !== user.email)await db.set('visitors/'+token.uid,{email:user.email});
-    if(phone&&user.phoneNumber&&profile.phoneNumber!==user.phoneNumber)await db.set('visitors/'+token.uid,{phoneNumber:user.phoneNumber});
     return {email:user.email,synced:true};
   }
   async function closeAccount(token){
@@ -59,7 +59,6 @@ function createAccountService({auth,db,projectId,workspaceId,reservations,operat
     }
     if(path==='/v1/account/state')return {closing:(await db.get('accountSecurity/'+uid))?.closing===true};
     if(path==='/v1/profile/sync')return syncProfile(token);
-    if(path==='/v1/profile/sync-phone')return syncProfile(token,true);
     await requireOpen(uid);
     if(Object.hasOwn(operations,path)){
       const access=await db.get('visitorAccess/'+uid);if(access&&access.status!=='active')fail(403,'permission-denied','This account is restricted. Please contact support.');
@@ -109,6 +108,15 @@ function createAccountService({auth,db,projectId,workspaceId,reservations,operat
     if(req.url==='/health'&&req.method==='GET'){res.end(JSON.stringify({ok:true,projectId,...(workspaceId?{workspaceId}:{})}));return;}
     try{
       if(req.method!=='POST')fail(405,'method-not-allowed','Use a supported account action.');
+      if(['/v1/recovery/send','/v1/recovery/verify'].includes(req.url)) {
+        if(!recovery)fail(503,'unavailable','Email delivery is temporarily unavailable. Please try again later.');
+        const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>2048)fail(413,'request-too-large','The request is too large.');chunks.push(chunk);}
+        let body;try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch(_){fail(400,'invalid-request','Review the request and try again.');}
+        if(!body||typeof body!=='object'||Array.isArray(body))fail(400,'invalid-request','Review the request and try again.');
+        const method=req.url.endsWith('/send')?'send':'verify';
+        const result=await recovery[method](body,req.socket.remoteAddress||'unknown');
+        res.end(JSON.stringify(result));return;
+      }
       const bearer=/^Bearer (\S+)$/.exec(req.headers.authorization||'');if(!bearer)fail(401,'unauthenticated','Please sign in again.');
       let token;try{token=await auth.verifyIdToken(bearer[1],true);}catch(_){fail(401,'session-expired','Your session has ended. Please sign in again.');}
       if(!token.email_verified)fail(403,'email-not-verified','Verify your email before managing your account.');

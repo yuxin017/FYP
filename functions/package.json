@@ -1,7 +1,7 @@
 {
   "name": "ecotravel-functions",
   "private": true,
-  "main": "index.js",
+  "main": "themepark.js",
   "engines": {
     "node": "22"
   },
@@ -9,9 +9,11 @@
     "@google-cloud/language": "^7.2.0",
     "firebase-admin": "^13.4.0",
     "firebase-functions": "^6.4.0",
-    "openai": "^6.0.0"
+    "openai": "^6.0.0",
+    "web-push": "4.0.0"
   },
   "devDependencies": {
-    "eslint": "^10.10.0"
+    "eslint": "^10.10.0",
+    "fake-indexeddb": "6.2.8"
   }
 }

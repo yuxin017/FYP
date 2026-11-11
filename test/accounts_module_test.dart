@@ -60,6 +60,30 @@ class FixtureAccount extends AccountRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> sendResetOtp(String email) async {
+    sends++;
+    return {
+      'challengeId': 'fixture-challenge',
+      'expiresAt': DateTime.now()
+          .add(const Duration(minutes: 5))
+          .toIso8601String(),
+      'resendAfterSeconds': 60,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyResetOtp(
+    String challengeId,
+    String otp,
+  ) async {
+    if (challengeId != 'fixture-challenge' || otp != '123456') {
+      throw StateError('The OTP is incorrect.');
+    }
+    resetCode = 'real-fixture-code';
+    return {'code': resetCode, 'email': user.email};
+  }
+
+  @override
   Future<void> resetEmail(String email) async {
     sends++;
   }
@@ -309,6 +333,8 @@ void main() {
     (t) async {
       final repo = FixtureAccount();
       await app(t, SecurityAccountPage(repository: repo));
+      expect(find.text('Linked Phone Number'), findsNothing);
+      expect(find.text('Device Authentication'), findsOneWidget);
       await shot(t, 'security');
       await tap(t, find.text('Reset Password'));
       await t.enterText(find.byType(TextFormField).at(0), 'Current123!');
@@ -340,24 +366,47 @@ void main() {
     },
   );
   testWidgets(
-    'password recovery uses an actual reset link and validates the new password',
+    'password recovery follows six-digit OTP screens and validates the new password',
     (t) async {
       final repo = FixtureAccount();
       await app(t, PasswordRecoveryPage(repository: repo));
       await t.enterText(find.byType(TextFormField), 'visitor@example.com');
       await tap(t, find.widgetWithText(FilledButton, 'Reset Password'));
       expect(repo.sends, 1);
-      await t.enterText(
-        find.byType(TextField).last,
-        'https://example.test/action?mode=resetPassword&oobCode=real-fixture-code',
-      );
-      await tap(t, find.text('Continue'));
+      expect(find.text('Authentication'), findsOneWidget);
+      expect(find.byType(TextField), findsNWidgets(6));
+      await shot(t, 'password-otp');
+      await t.enterText(find.byKey(const ValueKey('reset-otp-0')), '111111');
+      await tap(t, find.widgetWithText(FilledButton, 'Verify'));
+      expect(find.text('The OTP is incorrect.'), findsOneWidget);
+      await t.enterText(find.byKey(const ValueKey('reset-otp-0')), '123456');
+      await tap(t, find.widgetWithText(FilledButton, 'Verify'));
       expect(repo.resetCode, 'real-fixture-code');
       await t.enterText(find.byType(TextFormField).at(0), 'NextPassword123!');
       await t.enterText(find.byType(TextFormField).at(1), 'NextPassword123!');
       await tap(t, find.widgetWithText(FilledButton, 'Reset Password'));
       expect(repo.resets, 1);
       expect(find.text('Password Updated'), findsOneWidget);
+    },
+  );
+  testWidgets(
+    'existing Firebase email action links still open the password screen',
+    (t) async {
+      final repo = FixtureAccount();
+      await app(
+        t,
+        PasswordRecoveryPage(
+          repository: repo,
+          initialCode: 'https://example.test/action?oobCode=real-fixture-code',
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(repo.resetCode, 'real-fixture-code');
+      expect(
+        find.widgetWithText(FilledButton, 'Reset Password'),
+        findsOneWidget,
+      );
+      expect(repo.sends, 0);
     },
   );
   testWidgets(

@@ -21,6 +21,22 @@ foreach ($kind in @('node', 'flutter', 'python')) {
         $candidate = if ($command) { $command.Source } else { $null }
     }
     if (-not (Test-FypTool $candidate $kind $release.version)) { $candidate = Install-FypTool $kind $release $ToolCache }
+    if ($kind -eq 'python' -and -not (Test-FypPythonInstaller $candidate)) {
+        # Packaged Windows apps can redirect individual AppData executables and
+        # leave a split Python installation. Keep pip's resource checks intact;
+        # restore the checksum-pinned SDK in this writable project instead.
+        Write-Host 'Preparing a consistent project-local Python installer...'
+        $pythonCache = Join-Path $script:FypProjectRoot '.local\toolchains'
+        New-Item -ItemType Directory -Path $pythonCache -Force | Out-Null
+        $archiveName = 'python-' + $release.version + '.' + $release.format
+        $cachedArchive = Join-Path $ToolCache $archiveName
+        $localArchive = Join-Path $pythonCache $archiveName
+        if ((Test-Path -LiteralPath $cachedArchive) -and -not (Test-Path -LiteralPath $localArchive) -and (Get-FypHash $cachedArchive) -eq $release.sha256) {
+            Copy-Item -LiteralPath $cachedArchive -Destination $localArchive
+        }
+        $candidate = Install-FypTool $kind $release $pythonCache
+        if (-not (Test-FypPythonInstaller $candidate)) { throw 'The pinned Python installer could not initialize. Retry setup from a normal PowerShell terminal in this project.' }
+    }
     $runtime[$kind] = $candidate
     Write-Host "$kind $($release.version) ready."
 }
@@ -94,5 +110,7 @@ if ($LASTEXITCODE -eq 2 -and -not $NoLogin) {
     & $runtime.node (Join-Path $PSScriptRoot 'firebase\check-access.cjs')
 }
 if ($LASTEXITCODE -ne 0) { throw 'Firebase access is required on this PC. Run tool\firebase-login.cmd using an authorized account.' }
+& $runtime.node (Join-Path $script:FypProjectRoot 'server\shared_config_cli.cjs') sync-mobile
+if ($LASTEXITCODE -ne 0) { throw 'Shared application configuration could not be loaded. Check your Firebase project access and retry.' }
 }
 Write-Host 'Project setup is ready on this computer.'

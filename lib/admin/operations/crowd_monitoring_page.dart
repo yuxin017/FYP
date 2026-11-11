@@ -8,6 +8,7 @@ import '../../park/park_visit.dart';
 import '../../photos/photo_repository.dart';
 import '../admin_widgets.dart';
 import 'park_admin_repository.dart';
+import 'live_crowd_panel.dart';
 
 class CrowdMonitoringPage extends StatefulWidget {
   final ParkAdminRepository repository;
@@ -218,12 +219,22 @@ class _CrowdMonitoringPageState extends State<CrowdMonitoringPage> {
                 ],
               ),
               const SizedBox(height: 22),
+              ExpansionTile(
+                title: const Text('Live Movement and Visitor Locations'),
+                subtitle: const Text(
+                  'Voluntary positions, movement between zones and peak hours',
+                ),
+                children: [
+                  LiveCrowdPanel(repository: widget.repository, places: places),
+                ],
+              ),
+              const SizedBox(height: 22),
               AdminCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Live Queue Heatmap',
+                      'Queue Demand Heatmap',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,

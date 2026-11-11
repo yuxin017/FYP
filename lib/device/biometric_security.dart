@@ -270,7 +270,7 @@ class _DeviceSecurityPageState extends State<DeviceSecurityPage> {
         const SizedBox(height: 20),
         const PhotoPanel(
           child: Text(
-            'Signing out still ends the Firebase sign-in. On a new device, sign in with your email or linked phone first. Face matching for park photos is managed separately in Face Recognition.',
+            'Signing out still ends the Firebase sign-in. On a new device, sign in with your email and password first. Face matching for park photos is managed separately in Face Recognition.',
             style: TextStyle(height: 1.6),
           ),
         ),

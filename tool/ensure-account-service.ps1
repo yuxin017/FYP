@@ -6,6 +6,7 @@ $projectPath = $script:FypProjectRoot
 $workspaceId = Get-FypWorkspaceId
 $sourcePaths = @(Get-ChildItem -LiteralPath (Join-Path $projectPath 'server') -Filter '*.cjs' -File) + @(Get-ChildItem -LiteralPath (Join-Path $projectPath 'functions\src') -Filter '*.js' -File)
 $sourcePaths += @(Get-ChildItem -LiteralPath (Join-Path $projectPath 'ai') -Filter '*.py' -File)
+$sourcePaths += Get-Item -LiteralPath (Join-Path $projectPath 'config\venue.json'), (Join-Path $projectPath 'config\mobile.example.json')
 $sourcePaths += Get-Item -LiteralPath (Join-Path $projectPath '.local\runtime.json'), (Join-Path $projectPath 'functions\package-lock.json'), (Join-Path $projectPath 'tool\firebase\package-lock.json')
 $sourceHash = (($sourcePaths | Sort-Object FullName | ForEach-Object { Get-FypHash $_.FullName }) -join '')
 $hashPath = Join-Path $projectPath '.local\account-service.hash'
@@ -22,7 +23,7 @@ $entryPoint = Join-Path $projectPath 'server\start-accounts.cjs'
 $service = Start-Process -FilePath $runtime.node -ArgumentList ('"' + $entryPoint + '"') -WorkingDirectory $projectPath -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $scratchPath 'accounts.stdout.log') -RedirectStandardError (Join-Path $scratchPath 'accounts.stderr.log')
 [System.IO.File]::WriteAllText((Join-Path $scratchPath 'account-service.pid'), [string]$service.Id)
 [System.IO.File]::WriteAllText($hashPath, $sourceHash)
-for ($attempt = 0; $attempt -lt 40; $attempt++) {
+for ($attempt = 0; $attempt -lt 120; $attempt++) {
     Start-Sleep -Milliseconds 250
     $service.Refresh()
     if ($service.HasExited) { throw 'Account service stopped. See .local\accounts.stderr.log; run tool\setup.cmd to check Firebase sign-in and dependencies.' }

@@ -3,6 +3,7 @@ import '../../photos/photo_repository.dart';
 import '../admin_models.dart';
 import '../admin_widgets.dart';
 import 'park_admin_repository.dart';
+import '../../park/venue_configuration.dart';
 
 class ParkManagementPage extends StatefulWidget {
   final ParkAdminRepository repository;
@@ -40,31 +41,27 @@ class _ParkManagementPageState extends State<ParkManagementPage> {
         'Manage park offers, earning rules and visitor benefits.',
       ),
       const SizedBox(height: 23),
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (final section in [
-              'Promotions',
-              'Reward Catalogue',
-              'Loyalty Rules',
-              'Photo Prices',
-              'Weather Benefits',
-            ])
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: ChoiceChip(
-                  label: Text(section),
-                  selected: tab == section,
-                  onSelected: (_) => setState(() {
-                    tab = section;
-                    query = '';
-                    page = 0;
-                  }),
-                ),
-              ),
-          ],
-        ),
+      Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          for (final section in [
+            'Promotions',
+            'Reward Catalogue',
+            'Loyalty Rules',
+            'Photo Prices',
+            'Weather Benefits',
+          ])
+            ChoiceChip(
+              label: Text(section),
+              selected: tab == section,
+              onSelected: (_) => setState(() {
+                tab = section;
+                query = '';
+                page = 0;
+              }),
+            ),
+        ],
       ),
       const SizedBox(height: 22),
       if (tab == 'Promotions' || tab == 'Reward Catalogue') ...[
@@ -296,7 +293,7 @@ class _ParkManagementPageState extends State<ParkManagementPage> {
                     'Attraction check-in':
                         '${d['ridePoints'] ?? 10} points per visit',
                     'Missed reservation policy': d['noShowEnabled'] == true
-                        ? '${d['noShowPenalty'] ?? 0} points deducted'
+                        ? '${d['noShowPenalty'] ?? 0} points deducted from missed reservation ${d['noShowThreshold'] ?? 2} onwards'
                         : 'No points deduction',
                   }
                 : kind == 'photos'
@@ -524,6 +521,12 @@ class _ParkPolicyEditorState extends State<ParkPolicyEditor> {
         if ((number || money) && num.tryParse(v) == null) {
           return 'Enter a number.';
         }
+        if (key == 'noShowThreshold') {
+          final count = int.tryParse(v);
+          if (count == null || count < 2 || count > 20) {
+            return 'Enter a whole number from 2 to 20.';
+          }
+        }
         return null;
       },
     ),
@@ -611,6 +614,7 @@ class _ParkPolicyEditorState extends State<ParkPolicyEditor> {
           'purchasePointsPerRinggit',
           'ridePoints',
           'noShowPenalty',
+          'noShowThreshold',
         ]) {
           payload[key] = value(key);
         }
@@ -921,6 +925,20 @@ class _ParkPolicyEditorState extends State<ParkPolicyEditor> {
                               : (v) => setState(() => noShow = v),
                         ),
                         input(
+                          'noShowThreshold',
+                          'Missed Reservations Before Deduction',
+                          number: true,
+                          value: 2,
+                          helper: '2–20 missed reservations',
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 18),
+                          child: Text(
+                            'Deductions begin when the missed-reservation count reaches this limit. Turning this policy off and on starts a new count.',
+                            style: TextStyle(color: adminMuted, height: 1.5),
+                          ),
+                        ),
+                        input(
                           'noShowPenalty',
                           'Missed Reservation Deduction',
                           number: true,
@@ -975,9 +993,23 @@ class _ParkPolicyEditorState extends State<ParkPolicyEditor> {
                               ? null
                               : (v) => setState(() => enabled = v),
                         ),
-                        input('parkName', 'Park Name', value: 'Theme Park'),
-                        input('latitude', 'Park Latitude', number: true),
-                        input('longitude', 'Park Longitude', number: true),
+                        input(
+                          'parkName',
+                          'Park Name',
+                          value: VenueConfiguration.name,
+                        ),
+                        input(
+                          'latitude',
+                          'Park Latitude',
+                          number: true,
+                          value: VenueConfiguration.latitude,
+                        ),
+                        input(
+                          'longitude',
+                          'Park Longitude',
+                          number: true,
+                          value: VenueConfiguration.longitude,
+                        ),
                         input(
                           'rainThresholdMm',
                           'Observed Rain Threshold (mm)',

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../reservations/reminders/notification_settings_page.dart';
 import 'profile_settings_page.dart';
 import '../visitor_main_page.dart';
 import '../services/ticket_repository.dart';
@@ -195,17 +196,10 @@ class ProfilePage extends StatelessWidget {
         ),
         IconButton(
           tooltip: 'Notifications',
-          onPressed: () => showDialog<void>(
-            context: context,
-            builder: (dialogContext) => AlertDialog(
-              title: const Text('Notifications'),
-              content: const Text('No notifications yet.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Close'),
-                ),
-              ],
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => const NotificationSettingsPage(),
             ),
           ),
           icon: const Icon(Icons.notifications_none, color: _primary),

@@ -24,6 +24,8 @@ Messages about newer package versions are informational; keep the locked version
 First launch now prepares missing tools, locked packages, AI models and Firebase
 access automatically. Another PC follows RUN_ON_ANOTHER_PC.txt. It does not need
 Codex or this computer's folder layout. Complete its own Google sign-in if asked.
+Shared application/provider settings load from Firebase after that sign-in.
+You do not copy env.json or re-enter the email app password on another PC.
 
 Use your existing themeparksmartmanagement accounts. The admin portal and kiosk
 require a verified account with the Firebase Auth admin custom claim. A profile
@@ -38,13 +40,20 @@ Orders, tickets, entitlements and point movements are saved in Firebase.
 WHERE TO FIND THE COMBINED FEATURES
 - Home: Tickets, Virtual Queue, My Groups, My Park Photos, Park Offers, Assistant.
 - Profile: combined Purchase History, Visited Attractions, Points & Vouchers,
-  personal details, preferences, security, linked phone and photo matching.
+  personal details, preferences, security and photo matching.
 - Map: park search, landmark camera, directions, assistant and configured venue
-  navigation. Group live location is opt-in and stops when you leave its screen.
+  navigation. My Live Location opens the TAR UMT Penang campus map with optional
+  foreground GPS sharing. Group location sharing remains separate.
 - Admin: visitors, orders, packages, photos, promotions/rewards, reports,
   landmarks, crowd monitoring, unusual activity, facilities, reservations,
   admissions and support.
 - Kiosk: collect a paid print order, or start a separate visitor shopping session.
+
+Latest connection/setup status: FINISH_SETUP.txt. Gmail and Mapbox are connected;
+the user confirmed both password-OTP and purchased-photo email delivery.
+Password recovery now uses six email OTP digits. Foreign-currency ticket
+confirmation saves a fixed quote for history and receipts. Queue demand and
+voluntary live visitor distribution have separate crowd views.
 
 TRY THESE FLOWS YOURSELF
 1. Sign in with your existing visitor account. Check name, balance and profile.
@@ -73,14 +82,21 @@ TRY THESE FLOWS YOURSELF
     the period filters, heatmap selection, demand search and Manage Facilities.
 12. Ask the assistant questions in English, Malay and Chinese. Try its feature
     links, voice input and read-aloud button where your browser/device supports it.
-13. Check device sessions, password recovery, linked phone and device unlock.
+13. Check device sessions, email password recovery and device unlock.
     Do not delete your account merely to review the application.
 
 SETUP STILL REQUIRING YOUR ACCOUNTS / CHOICES / HARDWARE
-See SETUP_CONNECTIONS.txt for Mapbox/Situm, SMTP, SMS provider, actual park
-coordinates, Android USB access, NFC readers and printers. These do not use
-invented credentials, locations, face identities, weather or print outcomes.
+Shared Gmail, Mapbox, TAR UMT Penang weather and loyalty settings are configured.
+Remaining work includes IndoorAtlas SDK integration and an actual indoor survey,
+physical-device/printer/NFC checks and notification delivery on the chosen devices.
+Indoor positioning remains last, as requested. See FINISH_SETUP.txt.
+Sign-in uses email/password; phone numbers in profiles are contact details only.
+Profile -> Security & Account -> Notifications controls reminders on this device.
+Choose Notify Me when reviewing a reservation or use its My Reservations switch.
+Browser notifications can arrive after closing the tab while the Node backend
+and browser background notification service remain available. Installed mobile
+apps schedule reminders with the OS. Device permissions and power settings apply.
 
-No GitHub push/merge or Firebase billing-plan change was performed.
+GitHub branch: feat/a-foundation. Firebase remains on the selected Spark setup.
 Detailed feature-to-technology mapping: docs\FEATURE_TECHNOLOGIES.txt.
 Verification evidence and current state: docs\IMPLEMENTATION_PROGRESS.md.

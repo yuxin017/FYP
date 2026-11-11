@@ -5,7 +5,7 @@ import '../../accounts/security_pages.dart';
 import '../widgets/rewards_widgets.dart';
 import 'face_recognition_settings_page.dart';
 import '../../device/biometric_security.dart';
-import '../../auth/phone_auth_page.dart';
+import '../../reservations/reminders/notification_settings_page.dart';
 
 class SecurityAccountPage extends StatefulWidget {
   final AccountRepository? repository;
@@ -71,17 +71,17 @@ class _SecurityAccountPageState extends State<SecurityAccountPage> {
               ),
               const Divider(height: 1, color: rewardBorder),
               AccountRow(
-                icon: Icons.phone_android_outlined,
-                title: 'Linked Phone Number',
-                subtitle: 'Verify a number for SMS sign-in',
-                onTap: () => open(const PhoneAuthPage(link: true)),
-              ),
-              const Divider(height: 1, color: rewardBorder),
-              AccountRow(
                 icon: Icons.fingerprint,
                 title: 'Device Authentication',
                 subtitle: 'Face ID, fingerprint and device unlock',
                 onTap: () => open(const DeviceSecurityPage()),
+              ),
+              const Divider(height: 1, color: rewardBorder),
+              AccountRow(
+                icon: Icons.notifications_active_outlined,
+                title: 'Notifications',
+                subtitle: 'Reservation reminders on this device',
+                onTap: () => open(const NotificationSettingsPage()),
               ),
               const Divider(height: 1, color: rewardBorder),
               AccountRow(

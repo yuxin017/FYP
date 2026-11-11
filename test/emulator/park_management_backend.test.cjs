@@ -11,9 +11,18 @@ test('administrator policies validate prices, dates and discounts and cannot be 
  await f.handlers.saveCampaign(f.request(d));await db.doc('campaigns/'+d.code).update({usageCount:3});await f.handlers.saveCampaign(f.request({...d,name:'Updated savings'}));assert.equal((await db.doc('campaigns/'+d.code).get()).data().usageCount,3);
  await assert.rejects(f.handlers.savePhotoSettings(f.request({digitalPriceMinor:-5,printPriceMinor:3500,bundlePriceMinor:5000})),e=>e.code==='invalid-argument');
  await f.handlers.saveLoyalty(f.request({purchasePointsPerRinggit:2,ridePoints:15,noShowPenalty:5,noShowEnabled:true}));assert.equal((await db.doc('parkSettings/loyalty').get()).data().ridePoints,15);
+ assert.equal((await db.doc('parkSettings/loyalty').get()).data().noShowThreshold,2);
+ for(const noShowThreshold of [1,21,2.5])await assert.rejects(f.handlers.saveLoyalty(f.request({purchasePointsPerRinggit:2,ridePoints:15,noShowPenalty:5,noShowEnabled:true,noShowThreshold})),e=>e.code==='invalid-argument');
+ await f.handlers.saveLoyalty(f.request({purchasePointsPerRinggit:2,ridePoints:15,noShowPenalty:5,noShowEnabled:true,noShowThreshold:3}));assert.equal((await db.doc('parkSettings/loyalty').get()).data().noShowThreshold,3);
  const reward={name:'Park reward',benefit:'A benefit at the counter',pointsCost:100,validityDays:30,terms:['One use.'],instructions:['Present at the counter.'],active:true};
  for(const category of ['dining','shopping','photo']){const saved=await f.handlers.saveReward(f.request({...reward,category}));assert.equal((await db.doc('rewardCatalogue/'+saved.id).get()).data().category,category);}
  await assert.rejects(f.handlers.saveReward(f.request({...reward,category:'food'})),e=>e.code==='invalid-argument');
+});
+test('weather remains visible at the selected venue without enabling weather benefits',async()=>{
+ const f=fixture();await db.doc('parkSettings/weather').delete();await db.doc('parkWeather/2090-03-08').delete();
+ await f.handlers.saveWeather(f.request({enabled:false,latitude:5.45235,longitude:100.28508,parkName:'Fixture campus',rainThresholdMm:2,voucherBenefit:'Hot drink',validityDays:14}));
+ assert.equal((await f.handlers.runWeather()).configured,true);const weather=(await db.doc('parkWeather/2090-03-08').get()).data();assert.equal(weather.parkName,'Fixture campus');assert.equal(weather.rainQualified,false);assert.equal(weather.latitude,5.45235);
+ await assert.rejects(f.handlers.claimWeather(f.request({},false)),e=>e.code==='failed-precondition');await db.doc('parkWeather/2090-03-08').delete();
 });
 test('weather uses configured actual coordinates and grants one voucher per eligible visitor per day',async()=>{
  const f=fixture();await db.doc('parkSettings/weather').delete();assert.deepEqual(await f.handlers.runWeather(),{configured:false});

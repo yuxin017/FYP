@@ -14,6 +14,7 @@ import 'park_feed.dart';
 import 'park_map_canvas.dart';
 import 'park_visit.dart';
 import 'intelligence_repository.dart';
+import 'location_repository.dart';
 
 class CrowdHeatmapPage extends StatefulWidget {
   const CrowdHeatmapPage({
@@ -27,6 +28,7 @@ class CrowdHeatmapPage extends StatefulWidget {
     this.interests = const [],
     this.clock,
     this.intelligence,
+    this.locations,
   });
 
   final AttractionReader attractions;
@@ -38,6 +40,7 @@ class CrowdHeatmapPage extends StatefulWidget {
   final List<String> interests;
   final DateTime Function()? clock;
   final ParkIntelligenceRepository? intelligence;
+  final ParkLocationRepository? locations;
 
   @override
   State<CrowdHeatmapPage> createState() => _CrowdHeatmapPageState();
@@ -45,18 +48,23 @@ class CrowdHeatmapPage extends StatefulWidget {
 
 class _CrowdHeatmapPageState extends State<CrowdHeatmapPage> {
   bool _full = false;
+  bool live = false;
+  late final locations = widget.locations ?? FirebaseParkLocationRepository();
   late Future<Map<String, dynamic>>? density = widget.intelligence?.request(
     'density',
     {},
   );
   Timer? refresh;
+  Future<Map<String, dynamic>>? requestDensity() => live
+      ? locations.request('density', {})
+      : widget.intelligence?.request('density', {});
   @override
   void initState() {
     super.initState();
     if (widget.intelligence != null) {
       refresh = Timer.periodic(const Duration(minutes: 1), (_) {
         if (mounted) {
-          setState(() => density = widget.intelligence!.request('density', {}));
+          setState(() => density = requestDensity());
         }
       });
     }
@@ -81,7 +89,7 @@ class _CrowdHeatmapPageState extends State<CrowdHeatmapPage> {
         builder: (context) => AlertDialog(
           title: const Text('Crowd Heatmap'),
           content: const Text(
-            'Colours reflect confirmed places in attraction queues. Use the schematic to compare attractions and tap a marker for details.',
+            'Queue Demand uses confirmed places in remaining return windows. Live Visitors combines recent, voluntarily shared positions. The live view does not identify individual visitors.',
           ),
           actions: [
             TextButton(
@@ -200,18 +208,74 @@ class _CrowdHeatmapPageState extends State<CrowdHeatmapPage> {
           ),
           const SizedBox(height: 8),
         ],
+        if (widget.intelligence != null) ...[
+          Wrap(
+            spacing: 10,
+            children: [
+              ChoiceChip(
+                label: const Text('Queue Demand'),
+                selected: !live,
+                onSelected: (_) => setState(() {
+                  live = false;
+                  density = requestDensity();
+                }),
+              ),
+              ChoiceChip(
+                label: const Text('Live Visitors'),
+                selected: live,
+                onSelected: (_) => setState(() {
+                  live = true;
+                  density = requestDensity();
+                }),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         AspectRatio(
           aspectRatio: _full ? .78 : 1.35,
           child: FutureBuilder<Map<String, dynamic>>(
             future: density,
-            builder: (context, grid) => ParkMapCanvas(
-              visit: visit,
-              visible: visit.places.where((place) => place.isRide).toList(),
-              origin: origin,
-              heatmap: true,
-              density: grid.data,
-              onPlace: (place) =>
-                  widget.onPlace(place, visit.available(place).firstOrNull),
+            builder: (context, grid) => Stack(
+              children: [
+                Positioned.fill(
+                  child: ParkMapCanvas(
+                    visit: visit,
+                    visible: visit.places
+                        .where((place) => place.isRide)
+                        .toList(),
+                    origin: origin,
+                    heatmap: true,
+                    density: live
+                        ? (grid.data ?? {'size': 0, 'values': []})
+                        : grid.data,
+                    onPlace: (place) => widget.onPlace(
+                      place,
+                      visit.available(place).firstOrNull,
+                    ),
+                  ),
+                ),
+                if (live && grid.connectionState == ConnectionState.waiting)
+                  const Center(child: CircularProgressIndicator()),
+                if (live &&
+                    (grid.hasError ||
+                        (grid.hasData && grid.data?['visitorCount'] == 0)))
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          grid.hasError
+                              ? 'Live crowd information could not load. Please try again.'
+                              : 'No recent visitor locations are being shared.',
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),

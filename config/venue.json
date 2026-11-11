@@ -1,0 +1,14 @@
+{
+  "name": "TAR UMT Penang",
+  "address": "77, Lorong Lembah Permai Tiga, 11200 Tanjung Bungah, Pulau Pinang, Malaysia",
+  "latitude": 5.45235045,
+  "longitude": 100.28507965,
+  "north": 5.4538291,
+  "south": 5.4508718,
+  "east": 100.2865541,
+  "west": 100.2836052,
+  "addressSource": "https://penang.tarc.edu.my/contact-us",
+  "boundarySource": "https://www.openstreetmap.org/api/0.6/way/261053261/full",
+  "boundaryNote": "OpenStreetMap campus outline; not an indoor positioning survey.",
+  "timezone": "Asia/Kuala_Lumpur"
+}

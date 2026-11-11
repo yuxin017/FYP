@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 class VenueConfiguration {
+  static const name = 'TAR UMT Penang';
+  static const latitude = 5.45235045, longitude = 100.28507965;
   static const mapboxToken = String.fromEnvironment('MAPBOX_PUBLIC_TOKEN'),
       mapboxStyle = String.fromEnvironment(
         'MAPBOX_STYLE',
@@ -22,14 +24,18 @@ class VenueConfiguration {
       ].contains(defaultTargetPlatform) &&
       situmApiKey.isNotEmpty &&
       situmBuildingId.isNotEmpty;
-  static double? get north =>
-      double.tryParse(const String.fromEnvironment('PARK_NORTH'));
-  static double? get south =>
-      double.tryParse(const String.fromEnvironment('PARK_SOUTH'));
-  static double? get east =>
-      double.tryParse(const String.fromEnvironment('PARK_EAST'));
-  static double? get west =>
-      double.tryParse(const String.fromEnvironment('PARK_WEST'));
+  static double? get north => double.tryParse(
+    const String.fromEnvironment('PARK_NORTH', defaultValue: '5.4538291'),
+  );
+  static double? get south => double.tryParse(
+    const String.fromEnvironment('PARK_SOUTH', defaultValue: '5.4508718'),
+  );
+  static double? get east => double.tryParse(
+    const String.fromEnvironment('PARK_EAST', defaultValue: '100.2865541'),
+  );
+  static double? get west => double.tryParse(
+    const String.fromEnvironment('PARK_WEST', defaultValue: '100.2836052'),
+  );
   static bool get boundsReady =>
       north != null &&
       south != null &&

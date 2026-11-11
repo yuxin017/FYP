@@ -6,7 +6,6 @@ import 'auth_gate.dart';
 import 'login_error_message.dart';
 import '../support/support_page.dart';
 import '../visitor/pages/forgot_password_page.dart';
-import 'phone_auth_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -220,44 +219,11 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                       ),
                                       const SizedBox(width: 10),
-                                      PopupMenuButton<String>(
-                                        initialValue: 'email',
-                                        onSelected: (value) {
-                                          if (value == 'phone') {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const PhoneAuthPage(),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        itemBuilder: (_) => const [
-                                          PopupMenuItem(
-                                            value: 'email',
-                                            child: Text('Email Address'),
-                                          ),
-                                          PopupMenuItem(
-                                            value: 'phone',
-                                            child: Text('Phone Number'),
-                                          ),
-                                        ],
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              'Email Address',
-                                              style: TextStyle(
-                                                color: rose,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            Icon(
-                                              Icons.keyboard_arrow_down,
-                                              color: rose,
-                                            ),
-                                          ],
+                                      const Text(
+                                        'Email Address',
+                                        style: TextStyle(
+                                          color: rose,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ],
@@ -434,7 +400,7 @@ class _LoginPageState extends State<LoginPage> {
                                 builder: (context) => AlertDialog(
                                   title: const Text('Sign in on this device'),
                                   content: const Text(
-                                    'Sign in with your email or linked phone first. In Profile → Security & Account → Device Authentication, enable Face ID or fingerprint unlock for your next visit on a supported device.',
+                                    'Sign in with your email and password first. In Profile → Security & Account → Device Authentication, enable Face ID or fingerprint unlock for your next visit on a supported device.',
                                   ),
                                   actions: [
                                     TextButton(

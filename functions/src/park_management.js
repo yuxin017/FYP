@@ -28,7 +28,7 @@ function createParkManagementHandlers({db,FieldValue,clock=()=>new Date(),fetchW
   }
   async function saveLoyalty(request){
     const uid=await access(request),d=request.data;
-    const fields={purchasePointsPerRinggit:integer(d.purchasePointsPerRinggit,0,100,'purchase points'),ridePoints:integer(d.ridePoints,0,10000,'attraction check-in points'),noShowPenalty:integer(d.noShowPenalty??0,0,10000,'missed reservation points'),noShowEnabled:d.noShowEnabled===true,updatedAt:FieldValue.serverTimestamp(),updatedBy:uid};
+    const fields={purchasePointsPerRinggit:integer(d.purchasePointsPerRinggit,0,100,'purchase points'),ridePoints:integer(d.ridePoints,0,10000,'attraction check-in points'),noShowPenalty:integer(d.noShowPenalty??0,0,10000,'missed reservation points'),noShowThreshold:integer(d.noShowThreshold??2,2,20,'missed reservations before deduction (2 to 20)'),noShowEnabled:d.noShowEnabled===true,updatedAt:FieldValue.serverTimestamp(),updatedBy:uid};
     await db.runTransaction(async tx=>{const ref=db.doc('parkSettings/loyalty'),old=await tx.get(ref);tx.set(ref,{...fields,noShowEffectiveAt:fields.noShowEnabled&&old.data()?.noShowEnabled!==true?clock():old.data()?.noShowEffectiveAt??clock()});});
     await audit(uid,'loyalty_rules_saved','loyalty');return{saved:true};
   }
@@ -57,16 +57,21 @@ function createParkManagementHandlers({db,FieldValue,clock=()=>new Date(),fetchW
   async function refreshWeather(request){await access(request);return runWeather();}
   async function runWeather(){
     const config=(await db.doc('parkSettings/weather').get()).data();
-    if(!config?.enabled||!Number.isFinite(config.latitude)||!Number.isFinite(config.longitude))return{configured:false};
+    if(!Number.isFinite(config?.latitude)||!Number.isFinite(config?.longitude))return{configured:false};
     const now=clock(),day=parkDay(now),ref=db.doc('parkWeather/'+day),old=(await ref.get()).data();
-    if(old?.checkedAt?.toDate()>new Date(now.getTime()-15*60000))return{configured:true,cached:true,...await issueWeatherBenefits(day)};
+    if(old?.checkedAt?.toDate()>new Date(now.getTime()-15*60000)&&old.latitude===config.latitude&&old.longitude===config.longitude)return{configured:true,cached:true,...(config.enabled?await issueWeatherBenefits(day):{})};
     const uri=new URL('https://api.open-meteo.com/v1/forecast');uri.search=new URLSearchParams({latitude:String(config.latitude),longitude:String(config.longitude),current:'temperature_2m,precipitation,weather_code',timezone:'Asia/Kuala_Lumpur'});
     let value;try{const response=await fetchWeather(uri,{signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error();value=(await response.json()).current;}catch(_){fail('unavailable','Weather information is temporarily unavailable. Please try again later.');}
     if(!Number.isFinite(value?.precipitation)||!Number.isFinite(value.temperature_2m))fail('unavailable','Weather data could not be verified.');
     const raining=value.precipitation>=config.rainThresholdMm,observed=new Date(value.time+(/Z|[+-]\d\d:\d\d$/.test(value.time)?'':'+08:00'));
     if(!Number.isFinite(observed.getTime())||Math.abs(now-observed)>90*60000)fail('unavailable','Weather data is out of date. Please try again later.');
-    await db.runTransaction(async tx=>{const previous=await tx.get(ref),eligible=raining&&observed>=config.effectiveAt.toDate();tx.set(ref,{day,temperature:value.temperature_2m,precipitationMm:value.precipitation,weatherCode:value.weather_code,source:'Open-Meteo',observedAt:observed,checkedAt:now,rainQualified:previous.data()?.rainQualified===true||eligible,...(eligible&&!previous.data()?.rainQualified?{qualifiedAt:now,voucherBenefit:config.voucherBenefit,validityDays:config.validityDays}:{})},{merge:true});});
-    return{configured:true,day,raining,...await issueWeatherBenefits(day)};
+    await db.runTransaction(async tx=>{
+      const previous=(await tx.get(ref)).data(),sameVenue=previous?.latitude===config.latitude&&previous?.longitude===config.longitude;
+      const prior=sameVenue&&previous.rainQualified===true,eligible=config.enabled===true&&raining&&config.effectiveAt?.toDate&&observed>=config.effectiveAt.toDate();
+      tx.set(ref,{day,parkName:config.parkName,latitude:config.latitude,longitude:config.longitude,temperature:value.temperature_2m,precipitationMm:value.precipitation,weatherCode:value.weather_code,source:'Open-Meteo',observedAt:observed,checkedAt:now,rainQualified:prior||Boolean(eligible),
+        ...(prior?{qualifiedAt:previous.qualifiedAt,voucherBenefit:previous.voucherBenefit,validityDays:previous.validityDays}:eligible?{qualifiedAt:now,voucherBenefit:config.voucherBenefit,validityDays:config.validityDays}:{})});
+    });
+    return{configured:true,day,raining,...(config.enabled?await issueWeatherBenefits(day):{})};
   }
   async function claimWeather(request){
     const uid=await access(request,false);return grantWeather(uid,parkDay(clock()));

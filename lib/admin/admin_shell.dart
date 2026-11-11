@@ -44,6 +44,7 @@ class _AdminShellState extends State<AdminShell> {
   late final park = widget.repository.parkRepository;
   final scaffold = GlobalKey<ScaffoldState>();
   final globalSearch = TextEditingController();
+  final sidebarScroll = ScrollController();
   final facilityNavigator = GlobalKey<NavigatorState>();
   late final facilities = repository.facilityStore,
       facilitySlots = repository.facilitySlots,
@@ -60,6 +61,7 @@ class _AdminShellState extends State<AdminShell> {
   @override
   void dispose() {
     globalSearch.dispose();
+    sidebarScroll.dispose();
     store.dispose();
     repository.dispose();
     super.dispose();
@@ -120,98 +122,132 @@ class _AdminShellState extends State<AdminShell> {
           ),
         ),
         Expanded(
-          child: ListView(
-            key: const Key('admin-sidebar-list'),
-            padding: EdgeInsets.zero,
-            children: [
-              for (final item in [
-                ('dashboard', 'Dashboard', Icons.dashboard_outlined),
-                ('visitors', 'Visitors', Icons.people_outline),
-                (
-                  'tickets',
-                  'Tickets & Orders',
-                  Icons.confirmation_number_outlined,
-                ),
-                ('packages', 'Pass Packages', Icons.local_activity_outlined),
-                ('photos', 'Smart Photos', Icons.photo_library_outlined),
-                ('promotions', 'Promotions & Rewards', Icons.redeem_outlined),
-                ('reports', 'Reports & Analytics', Icons.insights_outlined),
-                ('crowd', 'Crowd Monitoring', Icons.hub_outlined),
-                ('landmarks', 'Landmark References', Icons.location_searching),
-                ('anomalies', 'Unusual Activity', Icons.policy_outlined),
-                ('photo-kiosk', 'Photo Kiosk', Icons.local_printshop_outlined),
-                ('facilities', 'Park Facilities', Icons.attractions_outlined),
-                (
-                  'reservations',
-                  'Reservations',
-                  Icons.event_available_outlined,
-                ),
-                ('validation', 'Ticket Validation', Icons.qr_code_scanner),
-                (
-                  'ride-entry',
-                  'Attraction Check-in',
-                  Icons.sensor_door_outlined,
-                ),
-                (
-                  'activity',
-                  'Activity Monitoring',
-                  Icons.monitor_heart_outlined,
-                ),
-                ('support', 'Feedback & Complaints', Icons.forum_outlined),
-              ])
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(6),
-                      onTap: () => open(item.$1),
-                      child: Container(
-                        height: 49,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
+          child: Scrollbar(
+            controller: sidebarScroll,
+            thumbVisibility: true,
+            trackVisibility: true,
+            interactive: true,
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(
+                context,
+              ).copyWith(scrollbars: false),
+              child: ListView(
+                key: const Key('admin-sidebar-list'),
+                controller: sidebarScroll,
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final item in [
+                    ('dashboard', 'Dashboard', Icons.dashboard_outlined),
+                    ('visitors', 'Visitors', Icons.people_outline),
+                    (
+                      'tickets',
+                      'Tickets & Orders',
+                      Icons.confirmation_number_outlined,
+                    ),
+                    (
+                      'packages',
+                      'Pass Packages',
+                      Icons.local_activity_outlined,
+                    ),
+                    ('photos', 'Smart Photos', Icons.photo_library_outlined),
+                    (
+                      'promotions',
+                      'Promotions & Rewards',
+                      Icons.redeem_outlined,
+                    ),
+                    ('reports', 'Reports & Analytics', Icons.insights_outlined),
+                    ('crowd', 'Crowd Monitoring', Icons.hub_outlined),
+                    (
+                      'landmarks',
+                      'Landmark References',
+                      Icons.location_searching,
+                    ),
+                    ('anomalies', 'Unusual Activity', Icons.policy_outlined),
+                    (
+                      'photo-kiosk',
+                      'Photo Kiosk',
+                      Icons.local_printshop_outlined,
+                    ),
+                    (
+                      'facilities',
+                      'Park Facilities',
+                      Icons.attractions_outlined,
+                    ),
+                    (
+                      'reservations',
+                      'Reservations',
+                      Icons.event_available_outlined,
+                    ),
+                    ('validation', 'Ticket Validation', Icons.qr_code_scanner),
+                    (
+                      'ride-entry',
+                      'Attraction Check-in',
+                      Icons.sensor_door_outlined,
+                    ),
+                    (
+                      'activity',
+                      'Activity Monitoring',
+                      Icons.monitor_heart_outlined,
+                    ),
+                    ('support', 'Feedback & Complaints', Icons.forum_outlined),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(6),
-                          gradient: page == item.$1
-                              ? const LinearGradient(
-                                  colors: [
-                                    Color(0xFFD07B7E),
-                                    Color(0xFFC18A82),
-                                  ],
-                                )
-                              : null,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              item.$3,
-                              size: 22,
-                              color: page == item.$1 ? Colors.white : adminDark,
+                          onTap: () => open(item.$1),
+                          child: Container(
+                            height: 49,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(6),
+                              gradient: page == item.$1
+                                  ? const LinearGradient(
+                                      colors: [
+                                        Color(0xFFD07B7E),
+                                        Color(0xFFC18A82),
+                                      ],
+                                    )
+                                  : null,
                             ),
-                            const SizedBox(width: 17),
-                            Expanded(
-                              child: Text(
-                                item.$2,
-                                style: TextStyle(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  item.$3,
+                                  size: 22,
                                   color: page == item.$1
                                       ? Colors.white
                                       : adminDark,
-                                  fontSize: 13,
-                                  fontWeight: page == item.$1
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
                                 ),
-                              ),
+                                const SizedBox(width: 17),
+                                Expanded(
+                                  child: Text(
+                                    item.$2,
+                                    style: TextStyle(
+                                      color: page == item.$1
+                                          ? Colors.white
+                                          : adminDark,
+                                      fontSize: 13,
+                                      fontWeight: page == item.$1
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
         SizedBox(

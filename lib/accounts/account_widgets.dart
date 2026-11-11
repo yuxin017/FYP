@@ -7,7 +7,7 @@ import '../support/support_page.dart';
 class AccountScaffold extends StatefulWidget {
   final String title;
   final Widget child;
-  final bool dirty, busy, bottomNav;
+  final bool dirty, busy, bottomNav, showHeaderTitle;
   const AccountScaffold({
     super.key,
     required this.title,
@@ -15,6 +15,7 @@ class AccountScaffold extends StatefulWidget {
     this.dirty = false,
     this.busy = false,
     this.bottomNav = true,
+    this.showHeaderTitle = true,
   });
   @override
   State<AccountScaffold> createState() => _AccountScaffoldState();
@@ -88,7 +89,7 @@ class _AccountScaffoldState extends State<AccountScaffold> {
                           ),
                           Expanded(
                             child: Text(
-                              widget.title,
+                              widget.showHeaderTitle ? widget.title : '',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 20,
@@ -263,11 +264,13 @@ class AccountPasswordField extends StatefulWidget {
   final TextEditingController controller;
   final String label;
   final String? Function(String?)? validator;
+  final bool underlined;
   const AccountPasswordField({
     super.key,
     required this.controller,
     required this.label,
     this.validator,
+    this.underlined = false,
   });
   @override
   State<AccountPasswordField> createState() => _AccountPasswordFieldState();
@@ -282,16 +285,28 @@ class _AccountPasswordFieldState extends State<AccountPasswordField> {
     enableSuggestions: false,
     autocorrect: false,
     validator: widget.validator,
-    decoration: accountInput(
-      widget.label,
-      suffix: IconButton(
-        tooltip: hidden ? 'Show ${widget.label}' : 'Hide ${widget.label}',
-        onPressed: () => setState(() => hidden = !hidden),
-        icon: Icon(
-          hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-          color: rewardRose,
+    decoration:
+        accountInput(
+          widget.label,
+          suffix: IconButton(
+            tooltip: hidden ? 'Show ${widget.label}' : 'Hide ${widget.label}',
+            onPressed: () => setState(() => hidden = !hidden),
+            icon: Icon(
+              hidden
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              color: rewardRose,
+            ),
+          ),
+        ).copyWith(
+          filled: !widget.underlined,
+          prefixIcon: widget.underlined ? const Icon(Icons.lock_outline) : null,
+          border: widget.underlined ? const UnderlineInputBorder() : null,
+          enabledBorder: widget.underlined
+              ? const UnderlineInputBorder(
+                  borderSide: BorderSide(color: rewardRose),
+                )
+              : null,
         ),
-      ),
-    ),
   );
 }

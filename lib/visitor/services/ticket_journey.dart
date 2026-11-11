@@ -34,6 +34,10 @@ class TicketJourney extends ChangeNotifier {
   int discountMinor = 0;
   bool promotionAllowsPoints = true;
   bool termsAccepted = false;
+  TicketCurrencyQuote? currencyQuote;
+  String paymentCurrency = 'MYR';
+  String get paymentLabel =>
+      pending?.paymentLabel ?? currencyQuote?.label ?? priceLabel(total);
   int get quantity => cart.fold(0, (sum, line) => sum + line.quantity);
   int get subtotal => cart.fold(0, (sum, line) => sum + line.subtotal);
   int get total => subtotal - pointsUsed - discountMinor;
@@ -248,10 +252,60 @@ class TicketJourney extends ChangeNotifier {
     );
   }
 
+  Future<bool> prepareCurrency(String code) async {
+    if (busy || pending != null) return false;
+    paymentCurrency = code;
+    currencyQuote = null;
+    if (code == 'MYR') {
+      notifyListeners();
+      return true;
+    }
+    busy = true;
+    error = null;
+    notifyListeners();
+    try {
+      final result = await repository.promotionQuote(
+        TicketCheckout.journey(
+          requestId: newId(),
+          lines: cart,
+          guests: guests,
+          pointsUsed: pointsUsed,
+          promoCode: promoCode,
+          discountMinor: discountMinor,
+        ),
+        paymentCurrency: code,
+      );
+      if (result['totalMinor'] != total ||
+          result['discountMinor'] != discountMinor) {
+        error =
+            'The booking total changed. Review your promotion and points before continuing.';
+        termsAccepted = false;
+        return false;
+      }
+      currencyQuote = TicketCurrencyQuote.fromMap(result, total);
+      return true;
+    } catch (e) {
+      error = bookingError(e);
+      return false;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> pay(String method, {String cardLast4 = ''}) async {
     if (busy) return false;
     if (pending == null && (!guestsComplete || !termsAccepted)) {
       error = 'Complete the guest details and agree to the ticket terms first.';
+      notifyListeners();
+      return false;
+    }
+    if (pending == null &&
+        paymentCurrency != 'MYR' &&
+        (currencyQuote == null ||
+            currencyQuote!.baseMinor != total ||
+            currencyQuote!.expiresAt?.isBefore(DateTime.now()) == true)) {
+      error = 'Refresh your currency quote before confirming.';
       notifyListeners();
       return false;
     }
@@ -270,6 +324,7 @@ class TicketJourney extends ChangeNotifier {
             cardLast4: cardLast4,
             promoCode: promoCode,
             discountMinor: discountMinor,
+            currencyQuote: currencyQuote,
           );
       final uid = repository.userId;
       if (uid == null) throw StateError('Please sign in before checkout.');
