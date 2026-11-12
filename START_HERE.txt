@@ -87,9 +87,7 @@ TRY THESE FLOWS YOURSELF
 
 SETUP STILL REQUIRING YOUR ACCOUNTS / CHOICES / HARDWARE
 Shared Gmail, Mapbox, TAR UMT Penang weather and loyalty settings are configured.
-Remaining work includes IndoorAtlas SDK integration and an actual indoor survey,
-physical-device/printer/NFC checks and notification delivery on the chosen devices.
-Indoor positioning remains last, as requested. See FINISH_SETUP.txt.
+See FINISH_SETUP.txt for the attraction camera, NFC, printing and reminder checks.
 Sign-in uses email/password; phone numbers in profiles are contact details only.
 Profile -> Security & Account -> Notifications controls reminders on this device.
 Choose Notify Me when reviewing a reservation or use its My Reservations switch.

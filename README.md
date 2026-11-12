@@ -22,8 +22,9 @@ The launcher installs missing pinned Flutter/Node/Python tools, restores locked
 application and project-local Firebase CLI dependencies, verifies AI models and
 checks Firebase project access. First-time setup can take several minutes.
 Complete your own Google/Firebase sign-in when prompted. Codex is not required.
-Flutter packages are restored with `flutter pub get --enforce-lockfile`, so
-missing QR/scanner packages are downloaded using the exact locked versions.
+Flutter packages are restored with `flutter pub get` using the pinned Flutter
+3.41.0 SDK. This also corrects SDK package versions changed by an IDE using a
+different Flutter installation.
 Keep the launcher terminal open while using the app. It compiles and serves the
 release web application on IPv4 127.0.0.1, without requiring a Chrome debugger
 connection. Open the localhost URL once Flutter reports the app is being served.
@@ -120,9 +121,7 @@ landmark references, unusual-activity review, voucher usage and analytical PDF
 reports. Python handles recommendations, queue KDE, multilingual assistance,
 landmark matching, face recognition and activity analysis.
 
-Mapbox, Situm, SMTP email, phone authentication and physical NFC/printing need
-the user's accounts, venue configuration or devices. Connections and setup steps
-are prepared; these services have not been represented as live when unconfigured.
+Live attraction cameras add on-device person detection and WebRTC video heatmaps. See FINISH_SETUP.txt for camera assignments, device installation and Wi-Fi testing.
 Android compilation is verified. An iOS binary needs a Mac and signing setup.
 See docs/IMPLEMENTATION_PROGRESS.md for current verification evidence.
 

@@ -22,7 +22,7 @@ function createParkLocationHandlers({db,ai,venue,clock=()=>new Date()}){
  }
  async function update(request){
   const uid=await caller(request),d=request.data,now=clock(),observed=asDate(d.observedAt);
-  if(!/^[a-f0-9]{48}$/.test(d.sessionId||'')||!Number.isFinite(d.latitude)||!Number.isFinite(d.longitude)||!Number.isFinite(d.accuracy)||d.accuracy<0||d.accuracy>80||!['gps','situm'].includes(d.source)||!Number.isFinite(observed.getTime())||now-observed>60000||observed-now>10000)fail('invalid-argument','A recent location accurate to 80 metres or better is required.');
+  if(!/^[a-f0-9]{48}$/.test(d.sessionId||'')||!Number.isFinite(d.latitude)||!Number.isFinite(d.longitude)||!Number.isFinite(d.accuracy)||d.accuracy<0||d.accuracy>80||d.source!=='gps'||!Number.isFinite(observed.getTime())||now-observed>60000||observed-now>10000)fail('invalid-argument','A recent location accurate to 80 metres or better is required.');
   if(d.latitude<venue.south||d.latitude>venue.north||d.longitude<venue.west||d.longitude>venue.east)fail('failed-precondition','You are outside the campus area. Location sharing is available when you arrive.');
   return db.runTransaction(async tx=>{
    const ref=db.doc('parkLocations/'+uid),old=(await tx.get(ref)).data();

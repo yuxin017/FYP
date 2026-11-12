@@ -17,8 +17,6 @@ import '../../park/park_visit.dart';
 import '../../park/assistant_page.dart';
 import '../../park/intelligence_repository.dart';
 import '../../park/landmark_page.dart';
-import '../../park/situm_venue_page.dart';
-import '../../park/venue_configuration.dart';
 import '../../park/live_location_page.dart';
 import '../../reservations/data/reservation_repository.dart';
 import '../../reservations/pages/my_reservations_page.dart';
@@ -50,8 +48,8 @@ class _MapPageState extends State<MapPage> {
   AttractionReader get _attractions => widget.attractions ?? _catalogue;
   SlotReader get _slots => widget.slots ?? _catalogue;
   String? get _startId => widget.startPlace?.value ?? _localStart;
-  Future<void> landmark() async {
-    final id = await Navigator.push<String>(
+  Future<void> _landmark(ParkVisit visit) async {
+    final result = await Navigator.push<Object>(
       context,
       MaterialPageRoute(
         builder: (_) => LandmarkLocationPage(
@@ -59,10 +57,13 @@ class _MapPageState extends State<MapPage> {
         ),
       ),
     );
-    if (id != null && mounted) {
+    if (!mounted) return;
+    if (result == LandmarkAction.chooseOnMap) {
+      await _setStart(visit);
+    } else if (result is String && visit.place(result) != null) {
       setState(() {
-        _localStart = id;
-        widget.startPlace?.value = id;
+        _localStart = result;
+        widget.startPlace?.value = result;
       });
     }
   }
@@ -413,7 +414,7 @@ class _MapPageState extends State<MapPage> {
                     _mapButton(
                       'Locate a Landmark',
                       Icons.photo_camera_outlined,
-                      landmark,
+                      () => _landmark(visit),
                     ),
                     const SizedBox(height: 8),
                     _mapButton(
@@ -432,19 +433,6 @@ class _MapPageState extends State<MapPage> {
                       Icons.my_location,
                       visit.places.isEmpty ? null : () => _setStart(visit),
                     ),
-                    if (VenueConfiguration.situmReady) ...[
-                      const SizedBox(height: 8),
-                      _mapButton(
-                        'Live Park Navigation',
-                        Icons.near_me_outlined,
-                        () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SitumVenuePage(),
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -615,19 +603,6 @@ class _MapPageState extends State<MapPage> {
               'Walking distance and arrival estimates require a surveyed path map.',
             ),
             const SizedBox(height: 12),
-            if (VenueConfiguration.situmReady) ...[
-              ReservationButton(
-                label: 'Start Live Navigation',
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        SitumVenuePage(destinationId: destination.id),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
             ReservationButton(
               label: 'End Navigation',
               onPressed: () => setState(() => _destinationId = null),

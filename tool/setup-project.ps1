@@ -59,12 +59,14 @@ foreach ($folder in @('functions', 'tool\firebase')) {
 }
 
 $flutterState = Join-Path $script:FypProjectRoot '.local\flutter-ready.sha256'
-$flutterHash = (Get-FypHash (Join-Path $script:FypProjectRoot 'pubspec.lock')) + (Get-FypHash (Join-Path $script:FypProjectRoot 'pubspec.yaml'))
 $packages = Join-Path $script:FypProjectRoot '.dart_tool\package_config.json'
 if (-not $SkipFlutterRestore) {
-    Write-Host 'Restoring locked Flutter packages and web tools...'
-    & $runtime.flutter --no-version-check pub get --enforce-lockfile
+    Write-Host 'Restoring Flutter packages with the project SDK...'
+    # An IDE may run pub get with another Flutter SDK before this launcher.
+    # Allow pub to restore the packages required by the pinned project SDK.
+    & $runtime.flutter --no-version-check pub get
     if ($LASTEXITCODE -ne 0) { throw 'Flutter dependency restore failed. Retry setup after resolving the error above.' }
+    $flutterHash = (Get-FypHash (Join-Path $script:FypProjectRoot 'pubspec.lock')) + (Get-FypHash (Join-Path $script:FypProjectRoot 'pubspec.yaml'))
     if (-not (Test-Path -LiteralPath $flutterState) -or [System.IO.File]::ReadAllText($flutterState).Trim() -ne $flutterHash) {
         & $runtime.flutter --no-version-check precache --web
         if ($LASTEXITCODE -ne 0) { throw 'Flutter web tool download failed. Check your internet connection and retry.' }

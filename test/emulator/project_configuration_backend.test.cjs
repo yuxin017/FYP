@@ -19,10 +19,21 @@ test('shared settings keep server credentials separate and a second source folde
  assert.throws(()=>writeMobileCache(root,{...downloaded,smtp:services.smtp}));assert.equal(fs.readFileSync(target,'utf8'),output);
 });
 test('provider changes are shared across instances and preserve unrelated settings',async()=>{
- await configuration.saveMobile({MAPBOX_PUBLIC_TOKEN:'pk.isolated-public-token',SITUM_BUILDING_ID:'1234',SITUM_API_KEY:'isolated-mobile-key'});
+ await db.doc(MOBILE_PATH).set({schemaVersion:1,values:{...mobile,SITUM_BUILDING_ID:'1234',INDOORATLAS_SDK_SECRET:'fixture-sdk-secret'}});
+ const legacy = await configuration.readMobile();
+ assert.equal(legacy.INDOORATLAS_SDK_SECRET,undefined);
+ assert.equal(legacy.SITUM_BUILDING_ID,undefined);
+ await assert.rejects(configuration.saveMobile({INDOORATLAS_SDK_SECRET:'old-secret'}));
+ await configuration.saveMobile({MAPBOX_PUBLIC_TOKEN:'pk.isolated-public-token'});
  await configuration.saveMobile({USE_FIREBASE_FUNCTIONS:true});
  const second=createProjectConfiguration({db,FieldValue}),values=await second.readMobile();
- assert.equal(values.MAPBOX_PUBLIC_TOKEN,'pk.isolated-public-token');assert.equal(values.SITUM_BUILDING_ID,'1234');assert.equal(values.USE_FIREBASE_FUNCTIONS,true);assert.deepEqual(await second.readServices(),services);
+ assert.equal(values.MAPBOX_PUBLIC_TOKEN,'pk.isolated-public-token');assert.equal(values.USE_FIREBASE_FUNCTIONS,true);assert.deepEqual(await second.readServices(),services);
+ const root=path.join(process.cwd(),'.local','configuration-checks','Providers '+randomUUID());
+ const native=JSON.parse(fs.readFileSync(writeMobileCache(root,values),'utf8'));
+ const web=JSON.parse(fs.readFileSync(path.join(root,'.local/web.defines.json'),'utf8'));
+ assert.deepEqual(native,values);
+ assert.deepEqual(web,values);
+ assert.equal(Object.keys(web).some(key=>key.startsWith('INDOORATLAS_')||key.startsWith('SITUM_')),false);
  await assert.rejects(configuration.saveMobile({PARK_NORTH:'1'}));assert.equal((await second.readMobile()).PARK_NORTH,mobile.PARK_NORTH);
 });
 test('a stale copied local secret cannot overwrite the shared email configuration during migration',async()=>{
@@ -31,7 +42,7 @@ test('a stale copied local secret cannot overwrite the shared email configuratio
  assert.equal((await configuration.readServices()).smtp.password,services.smtp.password);
 });
 test('validation rejects secret fields in client settings, credential-bearing URLs and insecure SMTP',()=>{
- for(const value of [{password:'never-bundle-this'},{MAPBOX_PUBLIC_TOKEN:'sk.secret-token'},{ACCOUNT_SERVICE_URL:'https://user:secret@example.test'},{SITUM_POI_MAP:'[]'}])assert.throws(()=>mobileValues(value));
+ for(const value of [{password:'never-bundle-this'},{MAPBOX_PUBLIC_TOKEN:'sk.secret-token'},{ACCOUNT_SERVICE_URL:'https://user:secret@example.test'}])assert.throws(()=>mobileValues(value));
  assert.throws(()=>serviceValues({smtp:{...services.smtp,port:25}}));assert.throws(()=>serviceValues({smtp:{...services.smtp,from:'a@example.test\r\nBcc: other@example.test'}}));
 });
 test('server credentials load from Firebase into memory with no local-file fallback',async()=>{

@@ -33,7 +33,7 @@ async function main(){
  }
  else if(command==='status'){
   const [mobile,services]=await Promise.all([configuration.readMobile(),configuration.readServices()]);
-  console.log(JSON.stringify({sharedConfiguration:true,emailConfigured:services.smtp?.enabled===true,mapboxConfigured:mobile.MAPBOX_PUBLIC_TOKEN.startsWith('pk.'),situmConfigured:Boolean(mobile.SITUM_API_KEY&&mobile.SITUM_BUILDING_ID)}));
+  console.log(JSON.stringify({sharedConfiguration:true,emailConfigured:services.smtp?.enabled===true,mapboxConfigured:mobile.MAPBOX_PUBLIC_TOKEN.startsWith('pk.')}));
  }
  else throw Error('unsupported-command');
 }

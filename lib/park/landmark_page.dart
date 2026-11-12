@@ -6,6 +6,8 @@ import '../photos/photo_widgets.dart';
 import '../photos/photo_repository.dart';
 import 'intelligence_repository.dart';
 
+enum LandmarkAction { chooseOnMap }
+
 class LandmarkLocationPage extends StatefulWidget {
   final ParkIntelligenceRepository repository;
   const LandmarkLocationPage({super.key, required this.repository});
@@ -69,26 +71,26 @@ class _LandmarkLocationPageState extends State<LandmarkLocationPage> {
     body: ListView(
       padding: const EdgeInsets.all(22),
       children: [
-        const PhotoPanel(
+        PhotoPanel(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.location_searching, color: photoRose, size: 29),
-              SizedBox(width: 13),
+              const Icon(Icons.location_searching, color: photoRose, size: 29),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Find your place in the park',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         color: photoRose,
                         fontSize: 17,
                       ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
+                    const SizedBox(height: 8),
+                    const Text(
                       'Use a nearby landmark to set your starting point.',
                       style: TextStyle(fontSize: 13, height: 1.5),
                     ),
@@ -208,7 +210,9 @@ class _LandmarkLocationPageState extends State<LandmarkLocationPage> {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: busy ? null : () => Navigator.pop(context),
+                onPressed: busy
+                    ? null
+                    : () => Navigator.pop(context, LandmarkAction.chooseOnMap),
                 child: const Text('Choose Location on Map'),
               ),
               if (error != null)

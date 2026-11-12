@@ -680,6 +680,77 @@ service cloud.firestore {
         && (data.get('updatedAt', null) == null || data.updatedAt is timestamp);
     }
 
+    // Live attraction cameras use Firestore for staff pairing. Media uses WebRTC.
+    function cameraStaff() {
+      return isAdmin() && request.auth.token.email_verified == true;
+    }
+
+    function cameraAssigned(id) {
+      return exists(/databases/$(database)/documents/attractionCameras/$(id))
+        && get(/databases/$(database)/documents/attractions/$(id)).data.get('deletedAt', null) == null;
+    }
+
+    function cameraBroadcast(id) {
+      return get(/databases/$(database)/documents/cameraBroadcasts/$(id)).data;
+    }
+
+    function cameraId(value) {
+      return value is string && value.matches('^[A-Za-z0-9]{20}$');
+    }
+
+    function cameraSdp(value) {
+      return value is string && value.size() > 0 && value.size() <= 32768;
+    }
+
+    match /attractionCameras/{id} {
+      allow read, delete: if cameraStaff();
+      allow create, update: if cameraStaff()
+        && exists(/databases/$(database)/documents/attractions/$(id))
+        && get(/databases/$(database)/documents/attractions/$(id)).data.get('deletedAt', null) == null
+        && request.resource.data.keys().hasOnly(['enabled'])
+        && request.resource.data.enabled == true;
+    }
+
+    match /cameraBroadcasts/{id} {
+      function validBroadcast() {
+        let data = request.resource.data;
+        return cameraStaff() && cameraAssigned(id)
+          && data.keys().hasOnly(['session', 'ownerUid', 'updatedAt'])
+          && cameraId(data.session) && data.ownerUid == request.auth.uid
+          && data.updatedAt == request.time;
+      }
+      allow get: if cameraStaff();
+      allow create: if validBroadcast();
+      allow update: if validBroadcast() && (
+        (resource.data.session == request.resource.data.session && resource.data.ownerUid == request.auth.uid)
+        || resource.data.updatedAt <= request.time - duration.value(24, 's')
+      );
+      allow delete: if cameraStaff() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /cameraViewRequests/{id} {
+      function validOffer() {
+        let data = request.resource.data;
+        let broadcast = cameraBroadcast(id);
+        return data.keys().hasOnly(['session', 'viewId', 'viewerUid', 'offer', 'requestedAt'])
+          && cameraId(data.session) && cameraId(data.viewId)
+          && data.viewerUid == request.auth.uid && data.requestedAt == request.time
+          && cameraSdp(data.offer) && data.session == broadcast.session
+          && broadcast.updatedAt > request.time - duration.value(24, 's');
+      }
+      function validAnswer() {
+        let broadcast = cameraBroadcast(id);
+        return broadcast.ownerUid == request.auth.uid && broadcast.session == resource.data.session
+          && resource.data.requestedAt > request.time - duration.value(30, 's')
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answer'])
+          && !('answer' in resource.data) && cameraSdp(request.resource.data.answer);
+      }
+      allow get: if cameraStaff();
+      allow create: if cameraStaff() && cameraAssigned(id) && validOffer();
+      allow update: if cameraStaff() && cameraAssigned(id) && (validOffer() || validAnswer());
+      allow delete: if cameraStaff() && resource.data.viewerUid == request.auth.uid;
+    }
+
     match /attractions/{attractionId} {
       allow read: if signedIn();
       allow create: if isAdmin()

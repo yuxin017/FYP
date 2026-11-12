@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-
 class VenueConfiguration {
   static const name = 'TAR UMT Penang';
   static const latitude = 5.45235045, longitude = 100.28507965;
@@ -8,22 +5,10 @@ class VenueConfiguration {
       mapboxStyle = String.fromEnvironment(
         'MAPBOX_STYLE',
         defaultValue: 'mapbox/streets-v12',
-      ),
-      situmApiKey = String.fromEnvironment('SITUM_API_KEY'),
-      situmBuildingId = String.fromEnvironment('SITUM_BUILDING_ID'),
-      situmProfile = String.fromEnvironment('SITUM_PROFILE'),
-      situmPoiMap = String.fromEnvironment('SITUM_POI_MAP', defaultValue: '{}');
+      );
   static bool get mapboxReady =>
       mapboxToken.startsWith('pk.') &&
       RegExp(r'^[\w-]+/[\w-]+$').hasMatch(mapboxStyle);
-  static bool get situmReady =>
-      !kIsWeb &&
-      [
-        TargetPlatform.android,
-        TargetPlatform.iOS,
-      ].contains(defaultTargetPlatform) &&
-      situmApiKey.isNotEmpty &&
-      situmBuildingId.isNotEmpty;
   static double? get north => double.tryParse(
     const String.fromEnvironment('PARK_NORTH', defaultValue: '5.4538291'),
   );
@@ -49,11 +34,4 @@ class VenueConfiguration {
       west!.abs() <= 180;
   static String get mapboxTiles =>
       'https://api.mapbox.com/styles/v1/$mapboxStyle/tiles/512/{z}/{x}/{y}?access_token=${Uri.encodeQueryComponent(mapboxToken)}';
-  static String? poiFor(String id) {
-    try {
-      return (jsonDecode(situmPoiMap) as Map)[id] as String?;
-    } catch (_) {
-      return null;
-    }
-  }
 }

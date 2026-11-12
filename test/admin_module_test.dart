@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -9,9 +10,26 @@ import 'package:collaborative_asg/admin/admin_models.dart';
 import 'package:collaborative_asg/admin/admin_repository.dart';
 import 'package:collaborative_asg/admin/admin_portal.dart';
 import 'package:collaborative_asg/admin/admin_shell.dart';
+import 'package:collaborative_asg/admin/attractions/data/admin_attraction_store.dart';
+import 'package:collaborative_asg/admin/reservations/data/admin_reservation_repository.dart';
+import 'package:collaborative_asg/reservations/models/reservation.dart';
 import 'package:collaborative_asg/visitor/models/tickets.dart';
 
+import 'support/memory_attraction_store.dart';
+
 class FixtureAdmin extends AdminRepository {
+  FixtureAdmin({this.facilityStore, this.facilityAccess});
+
+  @override
+  final AdminAttractionStore? facilityStore;
+  @override
+  final ValueListenable<bool>? facilityAccess;
+  List<AdminReservation> reservationRows = [];
+
+  @override
+  Stream<List<AdminReservation>> reservations(DateTime day) =>
+      Stream.value(reservationRows);
+
   @override
   String get userId => 'fixture-admin';
   PackageDraft? savedPackage;
@@ -318,6 +336,63 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('admin sidebar opens facilities and the reservation list', (
+    tester,
+  ) async {
+    final facilities = MemoryAttractionStore()..put(testAttraction());
+    final access = ValueNotifier(true);
+    addTearDown(facilities.dispose);
+    addTearDown(access.dispose);
+    final now = DateTime.utc(2026, 11, 11, 8);
+    final repo = FixtureAdmin(facilityStore: facilities, facilityAccess: access)
+      ..reservationRows = [
+        AdminReservation(
+          visitorId: 'visitor-alice',
+          visitorName: 'Alice Visitor',
+          booking: RideReservation(
+            id: 'ride-booking',
+            attractionId: 'mountain_falls',
+            attractionName: 'Mountain Falls',
+            slotId: 'return-window',
+            ticketId: 'entry-ticket',
+            status: 'confirmed',
+            startsAt: now,
+            endsAt: now.add(const Duration(minutes: 15)),
+          ),
+        ),
+      ];
+    await openAdmin(tester, repo);
+    final menuScroll = find.descendant(
+      of: find.byKey(const Key('admin-sidebar-list')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Park Facilities'),
+      250,
+      scrollable: menuScroll,
+    );
+    await tester.tap(find.text('Park Facilities'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Facility Management'), findsOneWidget);
+    expect(find.text('Mountain Falls'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Reservations'),
+      120,
+      scrollable: menuScroll,
+    );
+    await tester.tap(find.text('Reservations'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Reservation Management'), findsOneWidget);
+    expect(find.text('Alice Visitor'), findsOneWidget);
+    await tester.tap(find.byTooltip('View details for ride-booking'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reservation details'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('compact admin layout uses a drawer and retains usable tables', (
     tester,
   ) async {

@@ -42,6 +42,7 @@ class _AdminShellState extends State<AdminShell> {
   late final support = widget.repository.supportRepository;
   late final photos = widget.repository.photoRepository;
   late final park = widget.repository.parkRepository;
+  late final cameras = widget.repository.cameraStore;
   final scaffold = GlobalKey<ScaffoldState>();
   final globalSearch = TextEditingController();
   final sidebarScroll = ScrollController();
@@ -279,6 +280,7 @@ class _AdminShellState extends State<AdminShell> {
       builder: (context, c) {
         final wide = c.maxWidth >= 1050;
         Widget body;
+        var sectionScrolls = false;
         if (store.loading) {
           body = const Center(
             child: Padding(
@@ -302,37 +304,34 @@ class _AdminShellState extends State<AdminShell> {
                   onTicket: (t) => showAdminTicket(context, t, validate),
                 );
         } else if (page == 'facilities') {
-          body = facilities == null || facilityAccess == null
-              ? const AdminCard(
-                  child: Text(
-                    'Facility management is unavailable. Please reopen the portal.',
+          if (facilities == null || facilityAccess == null) {
+            body = const AdminCard(
+              child: Text(
+                'Facility management is unavailable. Please reopen the portal.',
+              ),
+            );
+          } else {
+            sectionScrolls = true;
+            body = Theme(
+              data: AdminTheme.data,
+              child: Navigator(
+                key: facilityNavigator,
+                onGenerateRoute: (_) => MaterialPageRoute<void>(
+                  builder: (_) => AttractionsAdminPage(
+                    store: facilities!,
+                    adminAccess: facilityAccess!,
+                    slotReader: facilitySlots,
                   ),
-                )
-              : SizedBox(
-                  height: (MediaQuery.sizeOf(context).height - 126)
-                      .clamp(430, 2000)
-                      .toDouble(),
-                  child: Navigator(
-                    key: facilityNavigator,
-                    onGenerateRoute: (_) => MaterialPageRoute(
-                      builder: (_) => Theme(
-                        data: AdminTheme.data,
-                        child: Scaffold(
-                          backgroundColor: AdminTheme.background,
-                          body: SingleChildScrollView(
-                            child: AttractionsAdminPage(
-                              store: facilities!,
-                              adminAccess: facilityAccess!,
-                              slotReader: facilitySlots,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                ),
+              ),
+            );
+          }
         } else if (page == 'reservations') {
-          body = ReservationsAdminPage(watchDay: repository.reservations);
+          sectionScrolls = true;
+          body = Theme(
+            data: AdminTheme.data,
+            child: ReservationsAdminPage(watchDay: repository.reservations),
+          );
         } else if (page == 'tickets') {
           body = TicketManagement(store: store, onValidate: validate);
         } else if (page == 'ride-entry') {
@@ -384,6 +383,7 @@ class _AdminShellState extends State<AdminShell> {
               ? CrowdMonitoringPage(
                   repository: park!,
                   onManageFacilities: () => open('facilities'),
+                  cameras: cameras,
                 )
               : ParkManagementPage(repository: park!);
         } else if (page == 'validation') {
@@ -408,6 +408,47 @@ class _AdminShellState extends State<AdminShell> {
         } else {
           body = AdminDashboard(store: store, onOpen: open);
         }
+        final content = Padding(
+          padding: EdgeInsets.all(wide ? 25 : 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (store.error case final error?)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: AdminCard(
+                    color: const Color(0xFFFFEFEE),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 21,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            error,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              // Full pages have their own scroll views and need a bounded height.
+              if (sectionScrolls)
+                Expanded(child: body)
+              else ...[
+                body,
+                const SizedBox(height: 15),
+              ],
+            ],
+          ),
+        );
         return Scaffold(
           key: scaffold,
           drawer: wide
@@ -547,42 +588,9 @@ class _AdminShellState extends State<AdminShell> {
                         minHeight: 2,
                       ),
                     Expanded(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.all(wide ? 25 : 18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (store.error != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 18),
-                                child: AdminCard(
-                                  color: const Color(0xFFFFEFEE),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.error_outline,
-                                        color: Colors.red,
-                                        size: 21,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          store.error!,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.red,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            body,
-                            const SizedBox(height: 15),
-                          ],
-                        ),
-                      ),
+                      child: sectionScrolls
+                          ? content
+                          : SingleChildScrollView(child: content),
                     ),
                   ],
                 ),

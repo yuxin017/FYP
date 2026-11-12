@@ -8,6 +8,7 @@ import 'operations/park_admin_repository.dart';
 import '../visitor/models/tickets.dart';
 import '../visitor/services/ticket_journey.dart';
 import 'admin_models.dart';
+import 'cameras/attraction_camera_store.dart';
 import '../support/support_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'attractions/data/admin_attraction_repository.dart';
@@ -40,6 +41,7 @@ class AdminFirebase {
 }
 
 abstract class AdminRepository {
+  AttractionCameraStore? get cameraStore => null;
   ParkAdminRepository? get parkRepository => null;
   PhotoAdminRepository? get photoRepository => null;
   VisitRepository? get visitRepository => null;
@@ -72,6 +74,9 @@ abstract class AdminRepository {
 }
 
 class FirebaseAdminRepository extends AdminRepository {
+  @override
+  AttractionCameraStore get cameraStore => AttractionCameraStore(_db, userId);
+
   @override
   ParkAdminRepository get parkRepository =>
       FirebaseParkAdminRepository(db: _db, auth: firebase.auth);

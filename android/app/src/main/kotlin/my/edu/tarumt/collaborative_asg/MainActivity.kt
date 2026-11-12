@@ -19,6 +19,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterFragmentActivity() {
+    private var attractionCamera: AttractionCameraBridge? = null
     private var speechResult:MethodChannel.Result?=null
     private var readResult:MethodChannel.Result?=null
     private var previousBrightness:Float?=null
@@ -26,6 +27,7 @@ class MainActivity : FlutterFragmentActivity() {
     private val readTimeout=Runnable { finishRead(null,"No pass was detected. Try again or scan the QR code.") }
     override fun configureFlutterEngine(engine:FlutterEngine){
         super.configureFlutterEngine(engine)
+        attractionCamera = AttractionCameraBridge(this, engine.dartExecutor.binaryMessenger)
         MethodChannel(engine.dartExecutor.binaryMessenger,"themepark/screen").setMethodCallHandler { call,result ->
             if(call.method!="brightness"){result.notImplemented();return@setMethodCallHandler}
             val enabled=call.argument<Boolean>("enabled")==true
@@ -78,5 +80,6 @@ class MainActivity : FlutterFragmentActivity() {
     private fun validPass(value:String)=value.length<=300 && Regex("^(TP1|RQ1|PK1|RV1):[A-Za-z0-9_:-]+$").matches(value)
     private fun finishRead(value:String?,error:String?){handler.removeCallbacks(readTimeout);NfcAdapter.getDefaultAdapter(this)?.disableReaderMode(this);val result=readResult;readResult=null;if(value!=null)result?.success(value)else result?.error("unavailable",error,null)}
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data);if(requestCode==8401){val result=speechResult;speechResult=null;if(resultCode==Activity.RESULT_OK)result?.success(data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?:"")else result?.success("")}}
-    override fun onDestroy(){ParkPassService.clear();finishRead(null,"Reader closed.");speechResult?.success("");speechResult=null;super.onDestroy()}
+    override fun onStop(){attractionCamera?.stop();super.onStop()}
+    override fun onDestroy(){attractionCamera?.dispose();attractionCamera=null;ParkPassService.clear();finishRead(null,"Reader closed.");speechResult?.success("");speechResult=null;super.onDestroy()}
 }

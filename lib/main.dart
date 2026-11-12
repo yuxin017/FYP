@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'firebase_environment.dart';
 import 'splash_screen.dart';
 import 'auth/auth_gate.dart';
 import 'admin/admin_portal.dart';
+import 'admin/cameras/attraction_camera_store.dart';
+import 'admin/cameras/camera_station_page.dart';
 import 'kiosk/photo_kiosk.dart';
 import 'photos/photo_repository.dart';
 
@@ -11,7 +14,8 @@ Future<void> main() async {
 
   await initializeFirebaseEnvironment();
 
-  runApp(const ThemeParkApp());
+  const cameraStation = bool.fromEnvironment('ATTRACTION_CAMERA_STATION');
+  runApp(const ThemeParkApp(initialRoute: cameraStation ? '/camera' : null));
 }
 
 class ThemeParkApp extends StatelessWidget {
@@ -35,6 +39,13 @@ class ThemeParkApp extends StatelessWidget {
       initialRoute: initialRoute,
       routes: {
         '/admin': (context) => const AdminPortal(),
+        if (defaultTargetPlatform == TargetPlatform.android && !kIsWeb)
+          '/camera': (context) => AdminPortal(
+            staffBuilder: (firebase, user) => CameraStationPage(
+              store: AttractionCameraStore(firebase.db, user.uid),
+              onSignOut: firebase.auth.signOut,
+            ),
+          ),
         '/kiosk': (context) => AdminPortal(
           staffBuilder: (firebase, user) => PhotoKiosk(
             repository: FirebasePhotoRepository(

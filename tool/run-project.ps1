@@ -34,7 +34,7 @@ try {
     Write-Host 'Starting the application. Keep this terminal open.'
     Write-Host 'Open http://localhost:5173/ after Flutter reports that the app is being served.'
     $flutterArgs = @('--no-version-check','run','--release','-d','web-server','--web-hostname=127.0.0.1','--web-port=5173','--no-pub')
-    $flutterArgs += '--dart-define-from-file=.local/mobile.defines.json'
+    $flutterArgs += '--dart-define-from-file=.local/web.defines.json'
     & $runtime.flutter @flutterArgs
     exit $LASTEXITCODE
 } catch {

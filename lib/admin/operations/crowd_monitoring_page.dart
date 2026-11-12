@@ -7,16 +7,20 @@ import '../../park/park_map_canvas.dart';
 import '../../park/park_visit.dart';
 import '../../photos/photo_repository.dart';
 import '../admin_widgets.dart';
+import '../cameras/attraction_camera_store.dart';
+import '../cameras/live_cameras_panel.dart';
 import 'park_admin_repository.dart';
 import 'live_crowd_panel.dart';
 
 class CrowdMonitoringPage extends StatefulWidget {
   final ParkAdminRepository repository;
   final VoidCallback onManageFacilities;
+  final AttractionCameraStore? cameras;
   const CrowdMonitoringPage({
     super.key,
     required this.repository,
     required this.onManageFacilities,
+    this.cameras,
   });
   @override
   State<CrowdMonitoringPage> createState() => _CrowdMonitoringPageState();
@@ -25,6 +29,7 @@ class CrowdMonitoringPage extends StatefulWidget {
 class _CrowdMonitoringPageState extends State<CrowdMonitoringPage> {
   int days = 1;
   bool automatic = true, fetching = false;
+  bool showCameras = false;
   String query = '';
   String? selected;
   late Future<Map<String, dynamic>> report = load();
@@ -46,7 +51,7 @@ class _CrowdMonitoringPageState extends State<CrowdMonitoringPage> {
   void initState() {
     super.initState();
     timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (automatic) refresh();
+      if (automatic && !showCameras) refresh();
     });
   }
 
@@ -81,12 +86,22 @@ class _CrowdMonitoringPageState extends State<CrowdMonitoringPage> {
           spacing: 12,
           runSpacing: 12,
           children: [
-            AdminButton(
-              'Refresh',
-              outlined: true,
-              icon: Icons.refresh,
-              onPressed: refresh,
-            ),
+            if (!showCameras)
+              AdminButton(
+                'Refresh',
+                outlined: true,
+                icon: Icons.refresh,
+                onPressed: refresh,
+              ),
+            if (widget.cameras != null)
+              AdminButton(
+                showCameras ? 'Crowd Overview' : 'Live Cameras',
+                outlined: true,
+                icon: showCameras
+                    ? Icons.insights_outlined
+                    : Icons.videocam_outlined,
+                onPressed: () => setState(() => showCameras = !showCameras),
+              ),
             AdminButton(
               'Manage Facilities',
               icon: Icons.attractions_outlined,
@@ -96,6 +111,16 @@ class _CrowdMonitoringPageState extends State<CrowdMonitoringPage> {
         ),
       ),
       const SizedBox(height: 18),
+      if (showCameras && widget.cameras != null)
+        LiveCamerasPanel(store: widget.cameras!)
+      else
+        _overview(),
+    ],
+  );
+
+  Widget _overview() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
       Wrap(
         spacing: 12,
         runSpacing: 10,

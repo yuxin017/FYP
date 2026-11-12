@@ -33,7 +33,7 @@ Groups: rotating invitations, registered/guest members, separate ticket links,
 atomic multi-member booking, opt-in live location with expiry and cleanup.
 
 Crowd heatmap: Python/scikit-learn Gaussian KernelDensity. Separate views use
-confirmed queue demand or recent voluntarily shared GPS/Situm positions.
+confirmed queue demand or recent voluntarily shared GPS positions.
 Movement and peak hours are aggregated without visitor identities. Live
 positions expire after two minutes and movement samples after 24 hours.
 TAR UMT Penang bounds and a Mapbox public token are configured in shared
@@ -51,11 +51,12 @@ Landmark camera: OpenCV ORB feature matching with RANSAC geometry checks and
 ambiguity rejection. Admin -> Landmark References supplies real venue images;
 Map -> Locate a Landmark confirms the detected starting point.
 
-Indoor navigation: IndoorAtlas is the selected replacement, deferred until last
-at the user's request. SDK replacement, credentials, floorplans, an on-site
-survey and device verification remain pending. The previous unconfigured Situm
-screen is still in the source. Indoor positioning is not complete.
-
+Live attraction cameras: MediaPipe EfficientDet Lite2 detects people on the
+Android device. It checks overlapping crops for smaller people and merges
+duplicate detections. A Gaussian heatmap concentrates near each detected torso.
+The browser receives the video and heatmap via WebRTC. Firestore manages
+staff-only attraction assignment and camera pairing.
+See FINISH_SETUP.txt for the two-phone walk test.
 Smart Photos: OpenCV YuNet detection + SFace embeddings, explicit opt-in selfie
 enrolment, private templates/originals, watermarked matching galleries, optional
 photo codes, real image edits, trusted pricing, points, purchase entitlements,

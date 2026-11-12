@@ -18,6 +18,10 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    androidResources {
+        noCompress += "tflite"
+    }
+
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
@@ -60,6 +64,8 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
+    implementation("com.google.mediapipe:tasks-vision:0.10.26.1")
+    implementation("io.github.webrtc-sdk:android:137.7151.04")
 }
 
 secrets {

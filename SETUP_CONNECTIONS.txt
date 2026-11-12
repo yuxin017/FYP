@@ -14,7 +14,7 @@ verified against ai/model_manifest.json. The launcher restores these automatical
 tool/setup-ai.ps1 remains available for repairing the prepared AI environment.
 
 New pinned Flutter packages for the completed connections:
-local_auth 3.0.2; situm_flutter 3.27.51; flutter_svg 2.2.3.
+local_auth 3.0.2; MediaPipe Tasks Vision 0.10.26.1 and Flutter WebRTC 1.2.1; flutter_svg 2.2.3.
 Their transitive packages are fixed by the combined pubspec.lock.
 
 Android builds:
@@ -87,17 +87,13 @@ Do not point an actual phone at 127.0.0.1:8787 without USB forwarding.
 An internet connection is still required for Firebase and external map services.
 An iOS binary must be built/signed on a Mac; it has not been compiled on Windows.
 
-MAPBOX AND SITUM
-Indoor positioning is deferred until LAST. IndoorAtlas is the selected provider,
-but its SDK replacement and live venue setup are pending. The Situm notes below
-describe existing code and are not instructions to configure the replacement.
+MAPBOX
 Mapbox connected on 2026-11-10: shared public token and TAR UMT Penang bounds
-verified with a live tile request and the running campus map. Situm setup remains.
-Application settings are shared through Firebase, not an author-specific env.json.
-Run tool/configure-map.cmd for Mapbox or tool/configure-situm.cmd for Situm.
-Each PC's launcher fetches current client settings after Firebase project sign-in
-and generates .local/mobile.defines.json automatically. SMTP credentials cannot
-enter this generated file. Restart after changes; Dart defines are compiled.
+verified with a live tile request and the running campus map.
+Run tool/configure-map.cmd for Mapbox. Each launcher loads shared Firebase settings after project sign-in.
+The web build uses .local/web.defines.json and the Android/iOS build uses
+.local/mobile.defines.json.
+SMTP credentials are server only. Rebuild after changing compiled settings.
 MAPBOX_PUBLIC_TOKEN must be a scoped pk. token, never a secret sk. token.
 MAPBOX_STYLE defaults to mapbox/streets-v12. PARK_NORTH/SOUTH/EAST/WEST must be
 the surveyed bounds corresponding to your attraction-map coordinates. Without
@@ -105,19 +101,7 @@ bounds the park map remains schematic. Group GPS maps need the token but do
 not need those park bounds. Official logo and attribution remain on Mapbox maps.
 https://docs.mapbox.com/api/maps/static-tiles/
 
-For Situm, create/survey the actual venue and configure its floorplans, Wi-Fi/BLE
-positioning and pedestrian paths in the Situm dashboard. The configuration command
-saves SITUM_API_KEY, SITUM_BUILDING_ID and optional SITUM_PROFILE to shared
-client settings. SITUM_POI_MAP is a JSON string
-mapping Firebase attraction IDs to actual Situm POI IDs, for example:
-{"firebase-attraction-id":"situm-poi-id"}
-The installed Android/iOS app then offers Live Park Navigation through the
-official SDK. Its normal location controls use the venue's positioning service.
-The Chrome app does not claim to detect Wi-Fi position. Landmark recognition
-uses admin-uploaded actual reference photographs and requires user confirmation.
-https://pub.dev/packages/situm_flutter
-https://situm.com/docs/mobile-sdks-introduction-requirements-code-examples-and-more/
-
+See FINISH_SETUP.txt for the Live Attraction Cameras setup.
 PASSWORD OTP AND PHOTO EMAIL DELIVERY
 The user confirmed receiving a password OTP and a purchased-photo email on
 10 November 2026. The photo flow included a real upload, photo-code claim and
@@ -201,8 +185,7 @@ display without enabling rainy-day benefits. Existing benefit settings are kept.
 Mapbox public token and campus bounds are saved in shared Firebase settings.
 Run tool/configure-map.cmd only when changing those settings.
 
-Map -> My Live Location provides optional foreground GPS sharing. The Situm
-navigation screen can also share actual SDK fixes after separate opt-in.
+Map -> My Live Location provides optional foreground GPS sharing.
 Current positions expire after two minutes; movement samples after 24 hours.
 The running API removes expired private records in bounded batches. Expired
 records are excluded immediately even before cleanup. Queue -> Crowd Heatmap

@@ -180,7 +180,7 @@ class _LiveLocationPageState extends State<LiveLocationPage>
     selectedIndex: 2,
     helpTitle: 'Location and crowd information',
     helpText:
-        'Share your current position to see yourself on the campus map. The crowd view combines voluntary, recent positions without showing names. Indoor navigation uses the separate venue navigation service.',
+        'Share your current position to see yourself on the campus map. The crowd view combines voluntary, recent positions without showing names.',
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: [

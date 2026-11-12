@@ -5,16 +5,21 @@ const MOBILE_PATH='applicationConfiguration/mobile',SERVICES_PATH='serverConfigu
 class ConfigurationError extends Error{constructor(message){super(message);this.name='ConfigurationError';}}
 const fail=message=>{throw new ConfigurationError(message);};
 const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
+const retiredSettings = new Set([
+ 'SITUM_API_KEY', 'SITUM_BUILDING_ID', 'SITUM_PROFILE', 'SITUM_POI_MAP',
+ 'INDOORATLAS_SDK_KEY', 'INDOORATLAS_SDK_SECRET', 'INDOORATLAS_VENUE_ID', 'INDOORATLAS_POI_MAP',
+]);
 function mobileValues(value,{partial=false}={}){
- if(!object(value)||Object.keys(value).some(key=>!Object.hasOwn(defaults,key)))fail('Application settings contain an unsupported field.');
+ if(!object(value)||Object.keys(value).some(key=>!Object.hasOwn(defaults,key)&&(partial||!retiredSettings.has(key))))fail('Application settings contain an unsupported field.');
  const result=partial?{}:{...defaults};
  for(const [key,raw]of Object.entries(value)){
+  if(retiredSettings.has(key))continue;
   if(key==='USE_FIREBASE_FUNCTIONS'){
    if(![true,false,'true','false'].includes(raw))fail('Choose a valid cloud reservation setting.');
    result[key]=raw===true||raw==='true';continue;
   }
   if(!['string','number'].includes(typeof raw))fail('Review the application setting values.');
-  const entry=String(raw);if(entry.length>(key==='SITUM_POI_MAP'?30000:3000)||/[\r\n\0]/.test(entry))fail('An application setting is too long or invalid.');
+  const entry=String(raw);if(entry.length>3000||/[\r\n\0]/.test(entry))fail('An application setting is too long or invalid.');
   if(key==='MAPBOX_PUBLIC_TOKEN'&&entry&&!/^pk\.[A-Za-z0-9_.-]+$/.test(entry))fail('Mapbox requires a public pk. token.');
   if(key==='MAPBOX_STYLE'&&!/^[\w-]+\/[\w-]+$/.test(entry))fail('Choose a valid Mapbox style.');
   if(key==='ACCOUNT_SERVICE_URL'){
@@ -22,10 +27,6 @@ function mobileValues(value,{partial=false}={}){
    if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.search||url.hash)fail('Choose a valid application API address.');
   }
   if(key.startsWith('PARK_')&&entry&&(!Number.isFinite(Number(entry))||Math.abs(Number(entry))>(['PARK_NORTH','PARK_SOUTH'].includes(key)?90:180)))fail('Choose valid venue coordinates.');
-  if(key==='SITUM_POI_MAP'){
-   let mapping;try{mapping=JSON.parse(entry);}catch(_){fail('Choose a valid Situm point mapping.');}
-   if(!object(mapping)||Object.keys(mapping).length>1000||Object.entries(mapping).some(([k,v])=>!k||k.length>160||typeof v!=='string'||!v||v.length>160))fail('Choose a valid Situm point mapping.');
-  }
   result[key]=entry;
  }
  if(!partial&&[result.PARK_NORTH,result.PARK_SOUTH,result.PARK_EAST,result.PARK_WEST].every(v=>v!=='')){
@@ -84,9 +85,14 @@ function createProjectConfiguration({db,FieldValue}){
  return{readMobile,readServices,saveMobile,saveServices,publishInitial};
 }
 function writeMobileCache(root,values){
- const safe=mobileValues(values),target=path.join(root,'.local/mobile.defines.json');
- fs.mkdirSync(path.dirname(target),{recursive:true});
- fs.writeFileSync(target+'.tmp',JSON.stringify(safe,null,2)+'\n',{mode:0o600});fs.renameSync(target+'.tmp',target);
- return target;
+ const mobile=mobileValues(values);
+ const folder=path.join(root,'.local');
+ fs.mkdirSync(folder,{recursive:true});
+ for(const name of ['mobile','web']){
+  const target=path.join(folder,name+'.defines.json'),temporary=target+'.'+process.pid+'.tmp';
+  fs.writeFileSync(temporary,JSON.stringify(mobile,null,2)+'\n',{mode:0o600});
+  fs.renameSync(temporary,target);
+ }
+ return path.join(folder,'mobile.defines.json');
 }
 module.exports={createProjectConfiguration,mobileValues,serviceValues,writeMobileCache,MOBILE_PATH,SERVICES_PATH,ConfigurationError};
